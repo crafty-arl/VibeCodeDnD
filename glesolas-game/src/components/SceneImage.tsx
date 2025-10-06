@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { createSceneImagePrompt, getSessionAestheticSeed, generateSceneImageUrl, generateSceneImageWithCraiyon, areImagesEnabled } from '../lib/imageService';
+import { createSceneImagePrompt, getSessionAestheticSeed, generateSceneImageUrl, generateSceneImageWithReplicate, areImagesEnabled } from '../lib/imageService';
 
 interface SceneImageProps {
   narrative: string;
@@ -43,17 +43,17 @@ export function SceneImage({
       setIsLoading(true);
       setHasError(false);
 
-      // Try Craiyon first
-      const craiyonUrl = await generateSceneImageWithCraiyon(imagePrompt);
+      // Try Replicate FLUX Schnell first
+      const replicateUrl = await generateSceneImageWithReplicate(imagePrompt);
 
       if (!isMounted) return;
 
-      if (craiyonUrl) {
-        console.log('✅ Using Craiyon image');
-        setImageUrl(craiyonUrl);
+      if (replicateUrl) {
+        console.log('✅ Using Replicate FLUX Schnell image');
+        setImageUrl(replicateUrl);
       } else {
         // Fallback to Pollinations
-        console.log('⚠️ Craiyon failed, falling back to Pollinations');
+        console.log('⚠️ Replicate failed, falling back to Pollinations');
         const narrativeSeed = narrative.split('').reduce((acc, char) => {
           return ((acc << 5) - acc) + char.charCodeAt(0);
         }, getSessionAestheticSeed());

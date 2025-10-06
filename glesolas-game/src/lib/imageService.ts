@@ -73,12 +73,12 @@ export function resetSessionAesthetic(): void {
 }
 
 /**
- * Generate image using Craiyon API via Cloudflare Function
- * Returns a data URL for the generated image
+ * Generate image using Replicate FLUX Schnell via Cloudflare Function
+ * Returns an image URL
  */
-export async function generateSceneImageWithCraiyon(prompt: string): Promise<string | null> {
+export async function generateSceneImageWithReplicate(prompt: string): Promise<string | null> {
   try {
-    console.log('🎨 Generating image with Craiyon API:', prompt);
+    console.log('🎨 Generating image with Replicate FLUX Schnell:', prompt);
 
     // Call our Cloudflare Function endpoint
     const response = await fetch('/api/generate-image', {
@@ -97,14 +97,14 @@ export async function generateSceneImageWithCraiyon(prompt: string): Promise<str
     const data = await response.json();
 
     if (data.imageUrl) {
-      console.log('✅ Craiyon image generated successfully');
-      return data.imageUrl; // Returns base64 data URL
+      console.log('✅ Replicate image generated successfully');
+      return data.imageUrl; // Returns Replicate image URL
     }
 
     console.warn('⚠️ No image URL in response');
     return null;
   } catch (error) {
-    console.error('❌ Craiyon generation failed:', error);
+    console.error('❌ Replicate generation failed:', error);
     return null;
   }
 }
