@@ -1,5 +1,6 @@
 name = "glesolas-game"
 compatibility_date = "2025-01-15"
+compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "dist"
 
 # Cloudflare Pages configuration for Vite React SPA
