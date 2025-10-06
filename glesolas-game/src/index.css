@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: oklch(22% 0.05 264);
+  --color-foreground: oklch(98% 0.01 264);
+  --color-card: oklch(22% 0.05 264);
+  --color-card-foreground: oklch(98% 0.01 264);
+  --color-popover: oklch(22% 0.05 264);
+  --color-popover-foreground: oklch(98% 0.01 264);
+  --color-primary: oklch(66% 0.19 61);
+  --color-primary-foreground: oklch(27% 0.08 61);
+  --color-secondary: oklch(28% 0.04 264);
+  --color-secondary-foreground: oklch(98% 0.01 264);
+  --color-muted: oklch(28% 0.04 264);
+  --color-muted-foreground: oklch(65% 0.02 264);
+  --color-accent: oklch(59% 0.18 171);
+  --color-accent-foreground: oklch(98% 0.01 264);
+  --color-destructive: oklch(48% 0.13 29);
+  --color-destructive-foreground: oklch(98% 0.01 264);
+  --color-border: oklch(28% 0.04 264);
+  --color-input: oklch(28% 0.04 264);
+  --color-ring: oklch(66% 0.19 61);
+  --radius: 0.5rem;
+  --color-chart-1: oklch(66% 0.19 61);
+  --color-chart-2: oklch(59% 0.18 171);
+  --color-chart-3: oklch(28% 0.04 264);
+  --color-chart-4: oklch(48% 0.13 29);
+  --color-chart-5: oklch(65% 0.02 264);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+}
+
+/* TPG-themed custom scrollbar */
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: var(--color-muted);
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: var(--color-primary);
+    border-radius: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: var(--color-accent);
+  }
+}
