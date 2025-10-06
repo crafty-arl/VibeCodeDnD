@@ -43,19 +43,26 @@ export function AIDeckGenerator({ onSave, onCancel }: AIDeckGeneratorProps) {
         return;
       }
 
-      // Convert generated cards to LoreCard format
-      const cards: LoreCard[] = result.cards.map((card, index) => ({
-        id: `ai-${Date.now()}-${index}`,
-        name: card.name,
-        type: card.type === 'character' ? 'Character' : card.type === 'item' ? 'Item' : 'Location',
-        flavor: card.flavor,
-        rarity: 'Common' as const,
-        stats: {
-          might: card.might,
-          fortune: card.fortune,
-          cunning: card.cunning,
-        },
-      }));
+      // Convert generated cards to LoreCard format with image URLs
+      const cards: LoreCard[] = result.cards.map((card, index) => {
+        // Generate image prompt based on card type and theme
+        const imagePrompt = `${card.name}, ${theme} theme, ${card.type}, fantasy card game art, detailed illustration, vibrant colors`;
+        const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=512&height=512&nologo=true`;
+
+        return {
+          id: `ai-${Date.now()}-${index}`,
+          name: card.name,
+          type: card.type === 'character' ? 'Character' : card.type === 'item' ? 'Item' : 'Location',
+          flavor: card.flavor,
+          rarity: 'Common' as const,
+          stats: {
+            might: card.might,
+            fortune: card.fortune,
+            cunning: card.cunning,
+          },
+          art: imageUrl,
+        };
+      });
 
       setGeneratedDeck({
         name: result.deckName,
@@ -161,10 +168,13 @@ export function AIDeckGenerator({ onSave, onCancel }: AIDeckGeneratorProps) {
               {isGenerating && (
                 <div className="text-center space-y-2">
                   <p className="text-sm text-muted-foreground">
-                    Creating your themed deck with GPT-4o...
+                    AI is crafting your {theme} deck...
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    This may take 30-60 seconds for {cardCount} cards
+                    Generating {cardCount} unique cards (characters, items, locations)
+                  </p>
+                  <p className="text-xs text-muted-foreground opacity-70">
+                    This usually takes 30-60 seconds
                   </p>
                 </div>
               )}

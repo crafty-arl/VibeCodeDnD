@@ -44,12 +44,17 @@ export function SceneImage({
       return ((acc << 5) - acc) + char.charCodeAt(0);
     }, getSessionAestheticSeed());
 
-    return generateSceneImageUrl(imagePrompt, {
+    const url = generateSceneImageUrl(imagePrompt, {
       width,
       height,
       seed: Math.abs(narrativeSeed),
-      model: 'nanobanana',
+      model: 'flux',
     });
+
+    console.log('🖼️ Generated image URL:', url);
+    console.log('🖼️ Image prompt:', imagePrompt);
+
+    return url;
   }, [imagePrompt, narrative, width, height]);
 
   // Track loading state
@@ -61,8 +66,12 @@ export function SceneImage({
     setHasError(false);
   }, [imageUrl]);
 
-  const handleImageError = () => {
-    console.warn('🖼️ Image loading failed:', imageUrl);
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    console.error('🖼️ Image loading failed:', {
+      url: imageUrl,
+      prompt: imagePrompt,
+      error: e,
+    });
     setIsLoading(false);
     setHasError(true);
   };

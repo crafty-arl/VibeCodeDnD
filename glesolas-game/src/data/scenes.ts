@@ -291,31 +291,38 @@ export async function generateChallengeAsync(
   cards: LoreCard[],
   introScene?: string,
   transitionContext?: string,
-  useAI: boolean = true
+  useAI: boolean = true,
+  playerProfile?: any
 ): Promise<SkillCheck> {
+  // Get scaled requirements based on player progression
+  let scaledRequirements = { might_req: 5, fortune_req: 5, cunning_req: 5 };
+  if (playerProfile && typeof playerProfile.level === 'number') {
+    const { getScaledChallengeRequirements } = await import('@/lib/levelingService');
+    scaledRequirements = getScaledChallengeRequirements(playerProfile);
+  }
+
   // Attempt structured AI generation if enabled and available
   if (useAI && isAIAvailable()) {
     const prompt = buildChallengePrompt(cards, introScene, transitionContext);
 
     // Try structured output first (with Zod validation)
     const structuredResult = await generateStructured(prompt, challengeSchema, {
-      maxTokens: 150, // Increased to ensure complete response
-      temperature: 0.7, // Lower temperature for better format compliance
+      maxTokens: 150,
+      temperature: 0.7,
     });
 
     if (structuredResult) {
       return {
         scene: structuredResult.challenge,
-        requirements: {
-          might_req: structuredResult.might_req,
-          fortune_req: structuredResult.fortune_req,
-          cunning_req: structuredResult.cunning_req,
-        },
+        requirements: scaledRequirements, // Use scaled requirements instead of AI-generated ones
       };
     }
   }
 
-  // Final fallback to random challenge from static list
+  // Final fallback to random challenge from static list with scaled requirements
   const fallbackChallenge = getRandomChallenge();
-  return fallbackChallenge;
+  return {
+    ...fallbackChallenge,
+    requirements: scaledRequirements
+  };
 }

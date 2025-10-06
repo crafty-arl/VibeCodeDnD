@@ -59,7 +59,7 @@ const tutorialSteps: Record<TutorialStep, {
   },
   'deck-selection': {
     title: 'Your Starting Deck',
-    message: 'You can either roll random cards or choose your starting 3 cards. Your hand will be filled to 5 cards automatically.',
+    message: 'Each encounter you draw 3 random cards from your deck. This is your hand - use all 3 wisely!',
     icon: <Swords className="w-8 h-8 text-purple-500" />,
     tips: [
       'Different cards excel at different approaches',
@@ -88,12 +88,12 @@ const tutorialSteps: Record<TutorialStep, {
   },
   'card-selection': {
     title: 'Select Your Response',
-    message: 'Choose 3 cards from your hand of 5. The combined stats of these cards determine which paths you unlock.',
+    message: 'You must play all 3 cards in your hand. The combined stats determine which paths you unlock.',
     icon: <Swords className="w-8 h-8 text-blue-400" />,
     tips: [
-      'Tap cards to select/deselect them',
-      'Try different combinations to unlock different paths',
-      'Strategic card selection is key!'
+      'Tap cards to select them for play',
+      'Sometimes your hand won\'t have the right cards - adapt!',
+      'Strategic deck building is key!'
     ]
   },
   'stat-requirements': {

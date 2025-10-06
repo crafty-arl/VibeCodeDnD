@@ -3,16 +3,20 @@ import { Trophy, Scroll, Save, FolderOpen, Home } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Progress } from './ui/progress';
+import { PlayerLevelDisplay } from './PlayerLevelDisplay';
 import type { GamePhase } from '../types/game';
+import type { PlayerProfile } from '../types/player';
 
 interface GameHeaderProps {
   glory: number;
   narrativeDice: number;
   phase: GamePhase;
   gameMode?: 'menu' | 'campaign' | 'playground';
+  playerProfile?: PlayerProfile;
   onEndSession: () => void;
   onSaveSession: () => void;
   onLoadSession: () => void;
+  onOpenCharacterSheet?: () => void;
 }
 
 export function GameHeader({
@@ -20,9 +24,11 @@ export function GameHeader({
   narrativeDice,
   phase,
   gameMode = 'menu',
+  playerProfile,
   onEndSession,
   onSaveSession,
   onLoadSession,
+  onOpenCharacterSheet,
 }: GameHeaderProps) {
   const showStats = gameMode === 'campaign';
   const inGame = phase !== 'home' || gameMode === 'playground';
@@ -45,6 +51,14 @@ export function GameHeader({
             <CardContent className="p-3 flex items-center justify-between gap-2">
               {/* Stats - Campaign Mode Only */}
               <div className="flex items-center gap-3 flex-shrink-0">
+                {playerProfile && onOpenCharacterSheet && (
+                  <div
+                    onClick={onOpenCharacterSheet}
+                    className="cursor-pointer hover:opacity-80 transition-opacity"
+                  >
+                    <PlayerLevelDisplay profile={playerProfile} compact />
+                  </div>
+                )}
                 <div className="flex items-center gap-1.5">
                   <Trophy className="w-4 h-4 text-primary" />
                   <span className="font-mono font-bold text-sm">{glory}</span>

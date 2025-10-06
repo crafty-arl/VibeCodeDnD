@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Scroll, Trophy, Mic } from 'lucide-react';
 import type { LoreCard, GamePhase, SkillCheck, RollResult, ActionPath } from './types/game';
 import type { PlaygroundStartMode, ThemeOption, PlaygroundScene, NarrativePrompt, StoryMemory } from './types/playground';
+import type { PlayerProfile, LevelUpResult } from './types/player';
 // Removed unused import drawRandomCards
 import { generateIntroSceneAsync, generateResolutionSceneAsync, generateActionNarrativeAsync, generateTransitionAsync, generateChallengeAsync } from './data/scenes';
 import { calculateTotalStats } from './lib/gameEngine';
@@ -38,15 +39,20 @@ import { CardPlayArea } from './components/CardPlayArea';
 import { CardDetailModal } from './components/CardDetailModal';
 import { SceneNarrationButton } from './components/SceneNarrationButton';
 import { SceneImage } from './components/SceneImage';
+import { LevelUpModal } from './components/LevelUpModal';
+import { PlayerLevelDisplay } from './components/PlayerLevelDisplay';
+import { PerkSelectionModal } from './components/PerkSelectionModal';
+import { AchievementsPanel } from './components/AchievementsPanel';
+import { getOrCreatePlayerProfile, awardXP, updateEncounterStats, savePlayerProfile } from './lib/levelingService';
 import { Swords, Sparkles, Dices } from 'lucide-react';
 import './index.css';
 
 function App() {
   const [gameMode, setGameMode] = useState<'menu' | 'campaign' | 'playground'>('menu');
   const [phase, setPhase] = useState<GamePhase>('home');
-  const [hand, setHand] = useState<LoreCard[]>([]); // Player's hand of 5 cards
+  const [hand, setHand] = useState<LoreCard[]>([]); // Player's hand (starts at 3, max 5)
   const [activeCards, setActiveCards] = useState<LoreCard[]>([]); // Cards drawn for intro (display only)
-  const [selectedCards, setSelectedCards] = useState<LoreCard[]>([]); // 3 cards selected from hand to play
+  const [selectedCards, setSelectedCards] = useState<LoreCard[]>([]); // Cards selected to play (starts at 1, max 3)
   const [introScene, setIntroScene] = useState<string>('');
   const [currentChallenge, setCurrentChallenge] = useState<SkillCheck | null>(null);
   const [availableActions, setAvailableActions] = useState<ActionPath[]>([]);
@@ -62,6 +68,13 @@ function App() {
   const [showDeckBuilder, setShowDeckBuilder] = useState(false);
   const [showNarratorManager, setShowNarratorManager] = useState(false);
   const [detailModalCard, setDetailModalCard] = useState<LoreCard | null>(null);
+
+  // Leveling System State
+  const [playerProfile, setPlayerProfile] = useState<PlayerProfile>(getOrCreatePlayerProfile());
+  const [levelUpResult, setLevelUpResult] = useState<LevelUpResult | null>(null);
+  const [showLevelUpModal, setShowLevelUpModal] = useState(false);
+  const [showPerkModal, setShowPerkModal] = useState(false);
+  const [showCharacterSheet, setShowCharacterSheet] = useState(false);
 
   // Playground Mode State
   const [playgroundPhase, setPlaygroundPhase] = useState<'setup' | 'playing' | 'complete'>('setup');
@@ -127,22 +140,21 @@ function App() {
     localStorage.setItem('glesolas_dice', String(narrativeDice));
   }, [phase, hand, activeCards, selectedCards, introScene, currentChallenge, availableActions, lastResult, transitionScene, glory, narrativeDice]);
 
-  const handleDeckSelection = async (selectedCards: LoreCard[]) => {
+  const handleDeckSelection = async () => {
     setShowDeckSelector(false);
     setGameMode('campaign'); // Set to campaign mode
     setIsGeneratingNarrative(true);
 
-    // Use selected 3 cards plus draw 2 more from active deck for a hand of 5
-    const additionalCards = DeckManager.drawRandomCards(2, selectedCards.map(c => c.id));
-    const playerHand = [...selectedCards, ...additionalCards];
-    setHand(playerHand);
+    // Draw starting hand of 3 cards
+    const startingHand = DeckManager.drawRandomCards(3);
+    setHand(startingHand);
 
-    // Use selected 3 cards for intro scene display
-    setActiveCards(selectedCards);
+    // Use all 3 cards for intro scene display
+    setActiveCards(startingHand);
 
     // Generate intro scene (AI or template fallback) with Vectorize context
     const activeDeck = DeckManager.getActiveDeck();
-    const scene = await generateIntroSceneAsync(selectedCards, true, activeDeck.cards);
+    const scene = await generateIntroSceneAsync(startingHand, true, activeDeck.cards);
     setIntroScene(scene);
 
     setNarrativeDice(prev => Math.max(0, prev - 1));
@@ -154,17 +166,16 @@ function App() {
     setGameMode('campaign'); // Set to campaign mode
     setIsGeneratingNarrative(true);
 
-    // Draw 5 random cards from active deck
-    const playerHand = DeckManager.drawRandomCards(5);
-    setHand(playerHand);
+    // Draw starting hand of 3 cards
+    const startingHand = DeckManager.drawRandomCards(3);
+    setHand(startingHand);
 
-    // Use first 3 cards for intro scene display
-    const introCards = playerHand.slice(0, 3);
-    setActiveCards(introCards);
+    // Use all 3 cards for intro scene display
+    setActiveCards(startingHand);
 
     // Generate intro scene (AI or template fallback) with Vectorize context
     const activeDeck = DeckManager.getActiveDeck();
-    const scene = await generateIntroSceneAsync(introCards, true, activeDeck.cards);
+    const scene = await generateIntroSceneAsync(startingHand, true, activeDeck.cards);
     setIntroScene(scene);
 
     setNarrativeDice(prev => Math.max(0, prev - 1));
@@ -176,7 +187,7 @@ function App() {
     setIsGeneratingNarrative(true);
 
     // Generate contextual challenge based on intro scene
-    const challenge = await generateChallengeAsync(activeCards, introScene);
+    const challenge = await generateChallengeAsync(activeCards, introScene, undefined, true, playerProfile);
     setCurrentChallenge(challenge);
     setNarrativeDice(prev => Math.max(0, prev - 1));
 
@@ -190,8 +201,8 @@ function App() {
         // Deselect card
         return prev.filter(c => c.id !== card.id);
       }
-      if (prev.length >= 3) {
-        // Already have 3 selected, don't add more
+      if (prev.length >= playerProfile.playAreaSize) {
+        // Already have max cards selected
         return prev;
       }
       // Add to selection
@@ -204,12 +215,12 @@ function App() {
   };
 
   const handlePlayResponse = async () => {
-    if (!currentChallenge || selectedCards.length !== 3) return;
+    if (!currentChallenge || selectedCards.length !== playerProfile.playAreaSize) return;
 
     setIsGeneratingNarrative(true);
 
-    // Calculate stats to determine which paths are unlocked
-    const total = calculateTotalStats(selectedCards);
+    // Calculate stats to determine which paths are unlocked (with player bonuses)
+    const total = calculateTotalStats(selectedCards, playerProfile);
     const { might_req, fortune_req, cunning_req } = currentChallenge.requirements;
 
     const mightUnlocked = total.might >= might_req;
@@ -258,7 +269,7 @@ function App() {
       introScene
     );
 
-    const total = calculateTotalStats(selectedCards);
+    const total = calculateTotalStats(selectedCards, playerProfile);
 
     setLastResult({
       path: chosenPath,
@@ -271,6 +282,19 @@ function App() {
 
     setGlory(prev => prev + gloryGained);
     setNarrativeDice(prev => prev + narrativeDiceGained);
+
+    // Award XP and update player stats
+    updateEncounterStats(playerProfile, true, chosenPath, gloryGained, selectedCards.length);
+    const levelUp = awardXP(playerProfile, gloryGained);
+    savePlayerProfile(playerProfile);
+    setPlayerProfile({ ...playerProfile });
+
+    // Show level-up modal if leveled up
+    if (levelUp) {
+      setLevelUpResult(levelUp);
+      setShowLevelUpModal(true);
+    }
+
     setIsGeneratingNarrative(false);
     setPhase('resolution');
   };
@@ -281,30 +305,28 @@ function App() {
     setIsGeneratingNarrative(true);
     setSelectedCards([]);
 
-    // Replenish hand: remove played cards and draw new ones from active deck
-    const remainingCards = hand.filter(c => !selectedCards.find(sc => sc.id === c.id));
-    const cardsToDrawCount = 5 - remainingCards.length;
+    // Draw new hand based on player's hand size (excludes previously used cards for variety)
     const usedCardIds = hand.map(c => c.id);
-    const newCards = DeckManager.drawRandomCards(cardsToDrawCount, usedCardIds);
-    const newHand = [...remainingCards, ...newCards];
+    const newHand = DeckManager.drawRandomCards(playerProfile.handSize, usedCardIds);
     setHand(newHand);
 
-    // Use first 3 cards from new hand for display
-    const displayCards = newHand.slice(0, 3);
-    setActiveCards(displayCards);
+    // Use all 3 cards for display
+    setActiveCards(newHand);
 
     // Generate challenge and transition in parallel for speed
     const [newChallenge, transition] = await Promise.all([
       generateChallengeAsync(
-        displayCards,
+        newHand,
         introScene,
-        lastResult.scene // Use previous resolution as transition context
+        lastResult.scene, // Use previous resolution as transition context
+        true,
+        playerProfile
       ),
       generateTransitionAsync(
         lastResult.path,
         lastResult.success,
         lastResult.scene,
-        displayCards,
+        newHand,
         currentChallenge.scene // Use current challenge (before new one generated)
       ),
     ]);
@@ -594,9 +616,11 @@ function App() {
         narrativeDice={narrativeDice}
         phase={phase}
         gameMode={gameMode}
+        playerProfile={playerProfile}
         onEndSession={handleEndSession}
         onSaveSession={() => setShowSaveDialog(true)}
         onLoadSession={() => setShowSessionManager(true)}
+        onOpenCharacterSheet={() => setShowCharacterSheet(true)}
       />
 
       {/* Main Content */}
@@ -708,6 +732,17 @@ function App() {
                 </motion.div>
               </div>
 
+              {/* Player Level Display */}
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.45 }}
+                onClick={() => setShowCharacterSheet(true)}
+                className="cursor-pointer"
+              >
+                <PlayerLevelDisplay profile={playerProfile} />
+              </motion.div>
+
               {/* Configuration Options - Smaller Cards */}
               <motion.div
                 initial={{ y: 20, opacity: 0 }}
@@ -719,7 +754,7 @@ function App() {
                     <CardTitle className="text-center text-lg">Game Configuration</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {/* Deck Management */}
                       <motion.div
                         whileHover={{ y: -2 }}
@@ -753,6 +788,24 @@ function App() {
                             Active: <span className="font-semibold text-foreground">{NarratorManager.getActiveNarrator().name}</span>
                           </p>
                           <p className="text-xs text-accent text-center font-medium">Click to manage →</p>
+                        </div>
+                      </motion.div>
+
+                      {/* Character Perks */}
+                      <motion.div
+                        whileHover={{ y: -2 }}
+                        className="cursor-pointer"
+                        onClick={() => setShowPerkModal(true)}
+                      >
+                        <div className="p-4 rounded-lg border border-border hover:border-yellow-500/50 hover:bg-yellow-500/5 transition-all space-y-2">
+                          <div className="flex items-center gap-2 justify-center">
+                            <Trophy className="w-5 h-5 text-yellow-400" />
+                            <h4 className="font-semibold">Character Perks</h4>
+                          </div>
+                          <p className="text-xs text-muted-foreground text-center">
+                            Points: <span className="font-semibold text-accent">{playerProfile.availablePerkPoints}</span>
+                          </p>
+                          <p className="text-xs text-yellow-400 text-center font-medium">Click to upgrade →</p>
                         </div>
                       </motion.div>
                     </div>
@@ -913,7 +966,7 @@ function App() {
 
               <CardPlayArea
                 selectedCards={selectedCards}
-                maxCards={3}
+                maxCards={playerProfile.playAreaSize}
                 onRemoveCard={handleRemoveCard}
                 onCardClick={setDetailModalCard}
               />
@@ -927,11 +980,11 @@ function App() {
               <div className="pb-16">
                 <Button
                   onClick={handlePlayResponse}
-                  disabled={selectedCards.length !== 3 || isGeneratingNarrative}
+                  disabled={selectedCards.length !== playerProfile.playAreaSize || isGeneratingNarrative}
                   className="w-full instant-feedback"
                   size="lg"
                 >
-                  {isGeneratingNarrative ? 'Generating Actions...' : selectedCards.length === 3 ? '⚔️ Play Cards' : `Select ${3 - selectedCards.length} More Card${3 - selectedCards.length > 1 ? 's' : ''}`}
+                  {isGeneratingNarrative ? 'Generating Actions...' : selectedCards.length === playerProfile.playAreaSize ? '⚔️ Play Cards' : `Select ${playerProfile.playAreaSize - selectedCards.length} More Card${playerProfile.playAreaSize - selectedCards.length > 1 ? 's' : ''}`}
                 </Button>
               </div>
               </>
@@ -1194,6 +1247,70 @@ function App() {
           onClose={() => setDetailModalCard(null)}
           disabled
         />
+
+        {/* Level Up Modal */}
+        {levelUpResult && (
+          <LevelUpModal
+            isOpen={showLevelUpModal}
+            onClose={() => setShowLevelUpModal(false)}
+            levelUpResult={levelUpResult}
+          />
+        )}
+
+        {/* Perk Selection Modal */}
+        <PerkSelectionModal
+          isOpen={showPerkModal}
+          onClose={() => setShowPerkModal(false)}
+          profile={playerProfile}
+          onPerkApplied={(updatedProfile) => setPlayerProfile({ ...updatedProfile })}
+        />
+
+        {/* Character Sheet Modal */}
+        <AnimatePresence>
+          {showCharacterSheet && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+                onClick={() => setShowCharacterSheet(false)}
+              />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-4xl max-h-[90vh] overflow-auto"
+              >
+                <Card className="border-2 border-accent">
+                  <CardHeader className="border-b border-accent/20">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-2xl">Character Sheet</CardTitle>
+                      <Button variant="ghost" size="icon" onClick={() => setShowCharacterSheet(false)}>
+                        <span className="text-xl">×</span>
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-6">
+                    <PlayerLevelDisplay profile={playerProfile} />
+                    <AchievementsPanel profile={playerProfile} />
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-accent/20">
+                      <Button onClick={() => {
+                        setShowCharacterSheet(false);
+                        setShowPerkModal(true);
+                      }}>
+                        Manage Perks
+                      </Button>
+                      <Button variant="outline" onClick={() => setShowCharacterSheet(false)}>
+                        Close
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
         </div>
       </main>
 

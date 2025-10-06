@@ -89,6 +89,11 @@ function getSchemaExample(schema: ZodSchema<any>): Record<string, any> {
       } else if (fieldDef?.typeName === 'ZodEnum') {
         const values = fieldDef?.values || [];
         example[key] = values[0] || 'value';
+      } else if (fieldDef?.typeName === 'ZodArray') {
+        // Handle arrays - recursively get example for array items
+        const arrayItemDef = (fieldDef as any).type;
+        const arrayExample = getSchemaExample(arrayItemDef);
+        example[key] = [arrayExample];
       } else {
         example[key] = null;
       }
@@ -249,6 +254,21 @@ Return ONLY the JSON object now:`,
 
       // Parse and validate with Zod
       const parsed = JSON.parse(repairedJson);
+
+      // Log first card to debug field name issues
+      if (parsed.cards && parsed.cards[0]) {
+        console.log('📋 First card sample:', JSON.stringify(parsed.cards[0], null, 2));
+
+        // Fix common field name mismatches (AI sometimes uses "description" instead of "flavor")
+        parsed.cards = parsed.cards.map((card: any) => {
+          if (card.description && !card.flavor) {
+            console.log('🔧 Mapping "description" to "flavor" for card:', card.name);
+            return { ...card, flavor: card.description };
+          }
+          return card;
+        });
+      }
+
       const validated = schema.parse(parsed);
 
       console.log('✅ Structured AI response received and validated');
@@ -367,27 +387,13 @@ export async function generateDeck(
 
 Generate a deck name and description that captures the ${theme} theme, then create all ${cardCount} cards.`;
 
-  try {
-    const llm = createLangChainClient(0.9, 4000); // High creativity, large token limit for bulk generation
-    if (!llm) return null;
+  console.log(`🎴 Generating ${cardCount} cards with theme: ${theme}`);
 
-    const structuredLlm = llm.withStructuredOutput(deckGenerationSchema, {
-      name: 'deck_generation',
-    });
-
-    console.log(`🎴 Generating ${cardCount} cards with theme: ${theme}`);
-
-    const result = await structuredLlm.invoke([
-      { role: 'system', content: 'You are a creative game designer for GLESOLAS, a tabletop card game with humor and wit.' },
-      { role: 'user', content: prompt },
-    ]);
-
-    console.log(`✅ Generated deck: ${result.deckName} with ${result.cards.length} cards`);
-    return result as GeneratedDeck;
-  } catch (error) {
-    console.error('Deck generation error:', error);
-    return null;
-  }
+  // Use generateStructured with the deckGenerationSchema for proper JSON mode generation
+  return generateStructured<GeneratedDeck>(prompt, deckGenerationSchema, {
+    temperature: 0.9,
+    maxTokens: 4000,
+  });
 }
 
 /**

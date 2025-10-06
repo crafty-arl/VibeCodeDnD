@@ -103,40 +103,18 @@ export function resetSessionAesthetic(): void {
 /**
  * Generates an image URL using Pollinations AI
  * @param prompt - The scene description to visualize
- * @param options - Optional parameters for image generation
+ * @param options - Optional parameters for image generation (unused with simple GET)
  * @returns URL that will generate and serve the image
  */
 export function generateSceneImageUrl(
   prompt: string,
-  options: ImageGenerationOptions = {}
+  _options: ImageGenerationOptions = {}
 ): string {
-  const {
-    width = 1024,
-    height = 768,
-    seed,
-    nologo = true,
-    model = 'flux',
-  } = options;
-
   // Encode the prompt for URL
   const encodedPrompt = encodeURIComponent(prompt);
 
-  // Build query parameters
-  const params = new URLSearchParams();
-  params.append('width', width.toString());
-  params.append('height', height.toString());
-  params.append('model', model);
-
-  if (seed !== undefined) {
-    params.append('seed', seed.toString());
-  }
-
-  if (nologo) {
-    params.append('nologo', 'true');
-  }
-
-  // Correct Pollinations AI endpoint: https://pollinations.ai/p/{prompt}
-  return `https://pollinations.ai/p/${encodedPrompt}?${params.toString()}`;
+  // Simple GET endpoint for image generation
+  return `https://image.pollinations.ai/prompt/${encodedPrompt}`;
 }
 
 /**

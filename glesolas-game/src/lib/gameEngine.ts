@@ -1,8 +1,9 @@
 import type { LoreCard, SkillCheck, RollResult, SkillPath, CardStats } from '@/types/game';
+import type { PlayerProfile } from '@/types/player';
 import { generateResolutionScene } from '@/data/scenes';
 
-export function calculateTotalStats(cards: LoreCard[]): CardStats {
-  return cards.reduce(
+export function calculateTotalStats(cards: LoreCard[], playerProfile?: PlayerProfile): CardStats {
+  const baseStats = cards.reduce(
     (total, card) => ({
       might: total.might + card.stats.might,
       fortune: total.fortune + card.stats.fortune,
@@ -10,6 +11,17 @@ export function calculateTotalStats(cards: LoreCard[]): CardStats {
     }),
     { might: 0, fortune: 0, cunning: 0 }
   );
+
+  // Apply player bonus stats from leveling and perks
+  if (playerProfile) {
+    return {
+      might: baseStats.might + playerProfile.bonusStats.might,
+      fortune: baseStats.fortune + playerProfile.bonusStats.fortune,
+      cunning: baseStats.cunning + playerProfile.bonusStats.cunning,
+    };
+  }
+
+  return baseStats;
 }
 
 export function determineSkillCheckResult(
