@@ -1,6 +1,6 @@
 /**
- * Image Generation Service using Pollinations AI
- * Provides free, no-API-key image generation for game scenes
+ * Image Generation Service using Craiyon AI
+ * Provides free, reliable image generation for game scenes
  * Maintains consistent aesthetic across all sessions
  */
 
@@ -73,7 +73,44 @@ export function resetSessionAesthetic(): void {
 }
 
 /**
- * Generates an image URL using Pollinations AI
+ * Generate image using Craiyon API via Cloudflare Function
+ * Returns a data URL for the generated image
+ */
+export async function generateSceneImageWithCraiyon(prompt: string): Promise<string | null> {
+  try {
+    console.log('🎨 Generating image with Craiyon API:', prompt);
+
+    // Call our Cloudflare Function endpoint
+    const response = await fetch('/api/generate-image', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompt }),
+    });
+
+    if (!response.ok) {
+      console.error('❌ Craiyon API error:', response.status, response.statusText);
+      return null;
+    }
+
+    const data = await response.json();
+
+    if (data.imageUrl) {
+      console.log('✅ Craiyon image generated successfully');
+      return data.imageUrl; // Returns base64 data URL
+    }
+
+    console.warn('⚠️ No image URL in response');
+    return null;
+  } catch (error) {
+    console.error('❌ Craiyon generation failed:', error);
+    return null;
+  }
+}
+
+/**
+ * Generates an image URL using Pollinations AI (fallback)
  * Exact format: https://image.pollinations.ai/prompt/apple?model=nanobanna
  * @param prompt - The scene description to visualize
  * @param options - Optional parameters for image generation

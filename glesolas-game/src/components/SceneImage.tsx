@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { createSceneImagePrompt, getSessionAestheticSeed, generateSceneImageUrl, areImagesEnabled } from '../lib/imageService';
+import { createSceneImagePrompt, getSessionAestheticSeed, generateSceneImageUrl, generateSceneImageWithCraiyon, areImagesEnabled } from '../lib/imageService';
 
 interface SceneImageProps {
   narrative: string;
@@ -30,35 +30,52 @@ export function SceneImage({
     return createSceneImagePrompt(sceneType, narrative, setting);
   }, [narrative, sceneType, setting]);
 
-  // Generate image URL directly (React 19 compatible)
-  const imageUrl = React.useMemo(() => {
-    // Use stable seed based on narrative content for consistency
-    const narrativeSeed = narrative.split('').reduce((acc, char) => {
-      return ((acc << 5) - acc) + char.charCodeAt(0);
-    }, getSessionAestheticSeed());
-
-    const url = generateSceneImageUrl(imagePrompt, {
-      width,
-      height,
-      seed: Math.abs(narrativeSeed),
-      model: 'flux-realism', // Fast, realistic fantasy art model
-      nologo: true,
-    });
-
-    console.log('🖼️ Generated image URL:', url);
-    console.log('🖼️ Image prompt:', imagePrompt);
-
-    return url;
-  }, [imagePrompt, narrative, width, height]);
-
   // Track loading state
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string>('');
 
+  // Generate image with Craiyon (with Pollinations fallback)
   useEffect(() => {
-    setIsLoading(true);
-    setHasError(false);
-  }, [imageUrl]);
+    let isMounted = true;
+
+    async function generateImage() {
+      setIsLoading(true);
+      setHasError(false);
+
+      // Try Craiyon first
+      const craiyonUrl = await generateSceneImageWithCraiyon(imagePrompt);
+
+      if (!isMounted) return;
+
+      if (craiyonUrl) {
+        console.log('✅ Using Craiyon image');
+        setImageUrl(craiyonUrl);
+      } else {
+        // Fallback to Pollinations
+        console.log('⚠️ Craiyon failed, falling back to Pollinations');
+        const narrativeSeed = narrative.split('').reduce((acc, char) => {
+          return ((acc << 5) - acc) + char.charCodeAt(0);
+        }, getSessionAestheticSeed());
+
+        const pollinationsUrl = generateSceneImageUrl(imagePrompt, {
+          width,
+          height,
+          seed: Math.abs(narrativeSeed),
+          model: 'flux-realism',
+          nologo: true,
+        });
+
+        setImageUrl(pollinationsUrl);
+      }
+    }
+
+    generateImage();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [imagePrompt, narrative, width, height]);
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     console.warn('🖼️ Image loading failed (Pollinations.ai timeout or error):', {
