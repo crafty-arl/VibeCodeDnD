@@ -41,7 +41,8 @@ export function SceneImage({
       width,
       height,
       seed: Math.abs(narrativeSeed),
-      model: 'flux',
+      model: 'flux-realism', // Fast, realistic fantasy art model
+      nologo: true,
     });
 
     console.log('🖼️ Generated image URL:', url);

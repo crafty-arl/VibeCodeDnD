@@ -74,19 +74,31 @@ export function resetSessionAesthetic(): void {
 
 /**
  * Generates an image URL using Pollinations AI
+ * Exact format: https://image.pollinations.ai/prompt/apple?model=nanobanna
  * @param prompt - The scene description to visualize
- * @param options - Optional parameters for image generation (unused with simple GET)
+ * @param options - Optional parameters for image generation
  * @returns URL that will generate and serve the image
  */
 export function generateSceneImageUrl(
   prompt: string,
-  _options: ImageGenerationOptions = {}
+  options: ImageGenerationOptions = {}
 ): string {
   // Encode the prompt for URL
   const encodedPrompt = encodeURIComponent(prompt);
 
-  // Simple GET endpoint for image generation
-  return `https://image.pollinations.ai/prompt/${encodedPrompt}`;
+  // Build query parameters exactly as Pollinations expects
+  const params = new URLSearchParams();
+  if (options.model) params.set('model', options.model);
+  if (options.width) params.set('width', options.width.toString());
+  if (options.height) params.set('height', options.height.toString());
+  if (options.seed) params.set('seed', options.seed.toString());
+  if (options.nologo !== undefined) params.set('nologo', options.nologo.toString());
+  if (options.enhance !== undefined) params.set('enhance', options.enhance.toString());
+
+  const queryString = params.toString();
+
+  // EXACT format: https://image.pollinations.ai/prompt/{prompt}?model=nanobanna
+  return `https://image.pollinations.ai/prompt/${encodedPrompt}${queryString ? '?' + queryString : ''}`;
 }
 
 /**
