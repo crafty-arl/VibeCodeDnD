@@ -252,6 +252,7 @@ function NarratorEditor({ narrator, onSave, onCancel }: NarratorEditorProps) {
           tone,
           style,
           systemPrompt,
+          voice: 'alloy' as const,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         };

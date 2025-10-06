@@ -48,7 +48,7 @@ export function SceneImage({
       width,
       height,
       seed: Math.abs(narrativeSeed),
-      model: 'flux',
+      model: 'nanobanana',
     });
   }, [imagePrompt, narrative, width, height]);
 
