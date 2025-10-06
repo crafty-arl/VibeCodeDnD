@@ -33,7 +33,6 @@ export function DraggableCardHand({
     if (disabled) return;
     longPressTimerRef.current = setTimeout(() => {
       setDetailCard(card);
-      setLongPressCard(card);
     }, 500); // 500ms for long press
   };
 
@@ -152,7 +151,6 @@ export function DraggableCardHand({
         open={!!detailCard}
         onClose={() => {
           setDetailCard(null);
-          setLongPressCard(null);
         }}
         onSelect={detailCard && !selectedCards.some(c => c.id === detailCard.id) ? () => {
           onCardSelect(detailCard);
