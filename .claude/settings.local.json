@@ -30,7 +30,8 @@
       "Bash(git rm:*)",
       "Bash(npm uninstall:*)",
       "Bash(timeout 10 npm run dev)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npx wrangler pages dev:*)"
     ],
     "deny": [],
     "ask": []

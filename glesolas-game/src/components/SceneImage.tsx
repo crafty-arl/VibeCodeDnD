@@ -35,7 +35,7 @@ export function SceneImage({
   const [hasError, setHasError] = useState(false);
   const [imageUrl, setImageUrl] = useState<string>('');
 
-  // Generate image with Craiyon (with Pollinations fallback)
+  // Generate image with Pollinations (with Replicate fallback)
   useEffect(() => {
     let isMounted = true;
 
@@ -43,30 +43,63 @@ export function SceneImage({
       setIsLoading(true);
       setHasError(false);
 
-      // Try Replicate FLUX Schnell first
-      const replicateUrl = await generateSceneImageWithReplicate(imagePrompt);
+      // Try Pollinations first (fast & free)
+      console.log('🎨 Trying Pollinations.ai first...');
+      const narrativeSeed = narrative.split('').reduce((acc, char) => {
+        return ((acc << 5) - acc) + char.charCodeAt(0);
+      }, getSessionAestheticSeed());
+
+      const pollinationsUrl = generateSceneImageUrl(imagePrompt, {
+        width,
+        height,
+        seed: Math.abs(narrativeSeed),
+        model: 'flux-realism',
+        nologo: true,
+      });
+
+      // Test if Pollinations loads within 5 seconds
+      const pollinationsWorks = await new Promise<boolean>((resolve) => {
+        const img = new Image();
+        const timeout = setTimeout(() => {
+          console.warn('⏱️ Pollinations timeout after 5s');
+          resolve(false);
+        }, 5000);
+
+        img.onload = () => {
+          clearTimeout(timeout);
+          console.log('✅ Pollinations loaded successfully');
+          resolve(true);
+        };
+
+        img.onerror = () => {
+          clearTimeout(timeout);
+          console.warn('❌ Pollinations failed to load');
+          resolve(false);
+        };
+
+        img.src = pollinationsUrl;
+      });
 
       if (!isMounted) return;
 
-      if (replicateUrl) {
-        console.log('✅ Using Replicate FLUX Schnell image');
-        setImageUrl(replicateUrl);
-      } else {
-        // Fallback to Pollinations
-        console.log('⚠️ Replicate failed, falling back to Pollinations');
-        const narrativeSeed = narrative.split('').reduce((acc, char) => {
-          return ((acc << 5) - acc) + char.charCodeAt(0);
-        }, getSessionAestheticSeed());
-
-        const pollinationsUrl = generateSceneImageUrl(imagePrompt, {
-          width,
-          height,
-          seed: Math.abs(narrativeSeed),
-          model: 'flux-realism',
-          nologo: true,
-        });
-
+      if (pollinationsWorks) {
+        // Pollinations worked - use it!
         setImageUrl(pollinationsUrl);
+      } else {
+        // Fallback to Replicate FLUX Schnell
+        console.log('⚠️ Pollinations failed, falling back to Replicate FLUX Schnell');
+        const replicateUrl = await generateSceneImageWithReplicate(imagePrompt);
+
+        if (!isMounted) return;
+
+        if (replicateUrl) {
+          console.log('✅ Using Replicate FLUX Schnell image');
+          setImageUrl(replicateUrl);
+        } else {
+          // Both failed - try Pollinations anyway (user will see error state)
+          console.error('❌ Both Pollinations and Replicate failed');
+          setImageUrl(pollinationsUrl);
+        }
       }
     }
 
