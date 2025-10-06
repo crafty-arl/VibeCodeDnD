@@ -1,11 +1,23 @@
 /**
- * Audio Service for Text-to-Speech using Pollinations AI
+ * Audio Service for Text-to-Speech using ElevenLabs
  * Generates audio narration for game narratives
  */
 
-export type VoiceType = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
+// ElevenLabs voice IDs
+export type VoiceType = 'adam' | 'antoni' | 'arnold' | 'callum' | 'george' | 'aria' | 'bella' | 'charlotte' | 'domi' | 'rachel';
 
-const POLLINATIONS_TTS_URL = 'https://text.pollinations.ai';
+const ELEVENLABS_VOICE_IDS: Record<VoiceType, string> = {
+  adam: 'pNInz6obpgDQGcFmaJgB',      // Deep, narrative
+  antoni: 'ErXwobaYiN019PkySvjV',    // Calm, mature
+  arnold: 'VR6AewLTigWG4xSOukaG',    // Strong, crisp
+  callum: 'N2lVS1w4EtoT3dr4eOWO',    // Hoarse, middle-aged
+  george: 'JBFqnCBsd6RMkjVDRZzb',    // Warm, friendly
+  aria: '9BWtsMINqrJLrRacOk9x',      // Expressive, news anchor
+  bella: 'EXAVITQu4vr4xnSDxMaL',     // Soft, young
+  charlotte: 'XB0fDUnXU5powFXDhCwa', // Seductive, smooth
+  domi: 'AZnzlk1XvdvUeBnXmlld',      // Strong, confident
+  rachel: '21m00Tcm4TlvDq8ikWAM',    // Calm, narrative
+};
 
 interface AudioSettings {
   voice: VoiceType;
@@ -16,7 +28,7 @@ const AUDIO_SETTINGS_KEY = 'glesolas_audio_settings';
 
 // Default settings - audio is enabled by default
 const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
-  voice: 'nova',
+  voice: 'george', // Warm, friendly default
   enabled: true,
 };
 
@@ -43,20 +55,54 @@ export function saveAudioSettings(settings: Partial<AudioSettings>): void {
 }
 
 /**
- * Generate audio URL for text using Pollinations AI
+ * Generate audio using ElevenLabs API
  * @param text - The text to convert to speech
  * @param voice - The voice to use (default from settings)
- * @returns URL to the generated audio file
+ * @returns Promise that resolves to audio blob
  */
-export function generateAudioUrl(text: string, voice?: VoiceType): string {
+export async function generateAudio(text: string, voice?: VoiceType): Promise<Blob> {
   const settings = getAudioSettings();
   const selectedVoice = voice || settings.voice;
+  const voiceId = ELEVENLABS_VOICE_IDS[selectedVoice];
 
-  // URL encode the text
-  const encodedText = encodeURIComponent(text);
+  const response = await fetch('/api/generate-audio', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      text,
+      voice_id: voiceId,
+      model_id: 'eleven_flash_v2_5', // Fast, cost-effective
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.75,
+        style: 0.0,
+        use_speaker_boost: true
+      }
+    }),
+  });
 
-  // Construct Pollinations AI TTS URL
-  return `${POLLINATIONS_TTS_URL}/${encodedText}?model=openai-audio&voice=${selectedVoice}`;
+  if (!response.ok) {
+    let errorMessage = 'Audio generation failed';
+    try {
+      // Clone the response so we can try reading it multiple ways
+      const clonedResponse = response.clone();
+      const error = await clonedResponse.json();
+      errorMessage = error.error || errorMessage;
+    } catch {
+      // Response might not be JSON, try to read as text
+      try {
+        const text = await response.text();
+        errorMessage = text || `HTTP ${response.status}: ${response.statusText}`;
+      } catch {
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+    }
+    throw new Error(errorMessage);
+  }
+
+  return await response.blob();
 }
 
 /**
@@ -64,17 +110,23 @@ export function generateAudioUrl(text: string, voice?: VoiceType): string {
  * Audio is always enabled - users control playback via play buttons
  * @param text - The text to narrate
  * @param voice - Optional voice override
- * @returns Audio element
+ * @returns Promise that resolves to Audio element
  */
-export function playNarration(text: string, voice?: VoiceType): HTMLAudioElement {
-  // Generate audio URL
-  const audioUrl = generateAudioUrl(text, voice);
+export async function playNarration(text: string, voice?: VoiceType): Promise<HTMLAudioElement> {
+  // Generate audio blob
+  const audioBlob = await generateAudio(text, voice);
+  const audioUrl = URL.createObjectURL(audioBlob);
 
   // Create and play audio element
   const audio = new Audio(audioUrl);
 
+  // Cleanup URL when audio ends
+  audio.onended = () => {
+    URL.revokeObjectURL(audioUrl);
+  };
+
   // Always play immediately when called (user pressed button)
-  audio.play().catch(err => {
+  await audio.play().catch(err => {
     console.warn('Audio playback failed:', err);
   });
 
@@ -85,17 +137,23 @@ export function playNarration(text: string, voice?: VoiceType): HTMLAudioElement
  * Create audio element with loading promise (for preloading)
  * @param text - The text to create audio for
  * @param voice - Optional voice override
- * @returns Promise that resolves with audio element when ready
+ * @returns Promise that resolves with audio element and cleanup function
  */
 export async function createAudioElement(
   text: string,
   voice?: VoiceType
-): Promise<HTMLAudioElement> {
-  // Generate audio URL
-  const audioUrl = generateAudioUrl(text, voice);
+): Promise<{ audio: HTMLAudioElement; cleanup: () => void }> {
+  // Generate audio blob
+  const audioBlob = await generateAudio(text, voice);
+  const audioUrl = URL.createObjectURL(audioBlob);
 
   // Create audio element
   const audio = new Audio(audioUrl);
+
+  // Cleanup function
+  const cleanup = () => {
+    URL.revokeObjectURL(audioUrl);
+  };
 
   // Wait for audio to be loaded and ready
   await new Promise<void>((resolve) => {
@@ -105,36 +163,43 @@ export async function createAudioElement(
       resolve(); // Resolve anyway so UI isn't blocked
     }, { once: true });
 
-    // Timeout after 5 seconds
+    // Timeout after 10 seconds (ElevenLabs can be slower)
     setTimeout(() => {
       console.warn('Audio loading timeout');
       resolve();
-    }, 5000);
+    }, 10000);
   });
 
-  return audio;
+  return { audio, cleanup };
 }
 
 /**
  * Preload audio for text (useful for faster playback)
  * @param text - The text to preload audio for
  * @param voice - Optional voice override
+ * @returns Promise that resolves when preload is complete
  */
-export function preloadAudio(text: string, voice?: VoiceType): void {
-  const audioUrl = generateAudioUrl(text, voice);
-  const audio = new Audio();
-  audio.preload = 'auto';
-  audio.src = audioUrl;
+export async function preloadAudio(text: string, voice?: VoiceType): Promise<void> {
+  try {
+    // Generate and cache the audio
+    await generateAudio(text, voice);
+  } catch (err) {
+    console.warn('Audio preload failed:', err);
+  }
 }
 
 /**
  * Voice descriptions for UI
  */
 export const VOICE_DESCRIPTIONS: Record<VoiceType, string> = {
-  alloy: 'Balanced, neutral voice - Great for general narration',
-  echo: 'Warm, conversational voice - Friendly and approachable',
-  fable: 'Expressive, storytelling voice - Perfect for dramatic scenes',
-  onyx: 'Deep, authoritative voice - Commanding presence',
-  nova: 'Clear, energetic voice - Dynamic and engaging',
-  shimmer: 'Soft, gentle voice - Calm and soothing',
+  adam: 'Deep, narrative voice - Perfect for storytelling',
+  antoni: 'Calm, mature voice - Thoughtful and composed',
+  arnold: 'Strong, crisp voice - Clear and commanding',
+  callum: 'Hoarse, middle-aged voice - Weathered and experienced',
+  george: 'Warm, friendly voice - Welcoming and approachable (Default)',
+  aria: 'Expressive, news anchor voice - Professional and dynamic',
+  bella: 'Soft, young voice - Gentle and youthful',
+  charlotte: 'Seductive, smooth voice - Elegant and captivating',
+  domi: 'Strong, confident voice - Bold and assertive',
+  rachel: 'Calm, narrative voice - Soothing and measured',
 };

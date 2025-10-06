@@ -34,7 +34,7 @@ import { StoryMemoryManager } from './lib/storyMemory';
 import { GameHeader } from './components/GameHeader';
 import { GameFooter } from './components/GameFooter';
 import { BottomActionSheet, ActionSheetButton } from './components/BottomActionSheet';
-import { CardHandDrawer } from './components/CardHandDrawer';
+import { ImprovedCardHand } from './components/ImprovedCardHand';
 import { CardPlayArea } from './components/CardPlayArea';
 import { CardDetailModal } from './components/CardDetailModal';
 import { SceneNarrationButton } from './components/SceneNarrationButton';
@@ -740,7 +740,7 @@ function App() {
               </motion.div>
 
               {/* Main Action Buttons - Large and Prominent */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <motion.div
                   initial={{ x: -50, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
@@ -815,6 +815,30 @@ function App() {
                       {narrativeDice < 1 && (
                         <p className="text-xs text-destructive font-semibold">⚠ Need Narrative Dice</p>
                       )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                <motion.div
+                  initial={{ x: 50, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.45 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Card className="border-2 border-blue-500/50 bg-gradient-to-br from-blue-500/10 via-background to-background hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/20 transition-all cursor-pointer h-full"
+                    onClick={() => setShowSessionManager(true)}
+                  >
+                    <CardContent className="p-8 flex flex-col items-center justify-center space-y-4 h-full min-h-[200px]">
+                      <div className="w-20 h-20 rounded-full bg-blue-500/20 flex items-center justify-center">
+                        <Dices className="w-10 h-10 text-blue-500" />
+                      </div>
+                      <div className="text-center space-y-2">
+                        <h3 className="text-2xl font-bold">Load Session</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Continue a saved adventure
+                        </p>
+                      </div>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -909,7 +933,7 @@ function App() {
                 className="text-center"
               >
                 <p className="text-xs text-muted-foreground italic">
-                  💡 Tip: Use "Load" in the top bar to continue a saved session
+                  💡 Tip: Configure your deck and narrator before starting a new adventure
                 </p>
               </motion.div>
             </motion.div>
@@ -1061,10 +1085,12 @@ function App() {
                 onCardClick={setDetailModalCard}
               />
 
-              <CardHandDrawer
+              <ImprovedCardHand
                 hand={hand}
                 selectedCards={selectedCards}
                 onCardSelect={handleCardSelect}
+                maxSelection={playerProfile.playAreaSize}
+                disabled={isGeneratingNarrative}
               />
 
               <div className="pb-16">

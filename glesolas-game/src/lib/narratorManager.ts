@@ -26,7 +26,7 @@ const DEFAULT_NARRATORS: NarratorPreset[] = [
     personality: 'Witty, self-aware, humorous',
     tone: 'Light-hearted with gaming culture references',
     style: 'Concise (2-3 sentences), entertaining',
-    voice: 'nova', // Clear, energetic voice
+    voice: 'george', // Warm, friendly voice
     systemPrompt: `I'm your DM for this GLESOLAS adventure, and I'm speaking directly to you at the table.
 I describe what YOU see, what YOU do, and what happens around YOU - never in third-person.
 I keep it to 2-3 sentences with tabletop gaming humor, always addressing you directly as "you" or by your character's actions.`,
@@ -40,7 +40,7 @@ I keep it to 2-3 sentences with tabletop gaming humor, always addressing you dir
     personality: 'Grandiose, dramatic, epic',
     tone: 'Heroic and mythical',
     style: 'Flowing prose with dramatic flair',
-    voice: 'onyx', // Deep, authoritative voice
+    voice: 'adam', // Deep, narrative voice
     systemPrompt: `I'm your DM, and I'm telling YOU an epic saga worthy of legend!
 I describe YOUR heroic deeds and YOUR encounters with dramatic flair, speaking directly to you as the hero of this tale.
 Every action YOU take becomes legendary in my 2-3 sentences of grand storytelling - always using "you" and "your".`,
@@ -54,7 +54,7 @@ Every action YOU take becomes legendary in my 2-3 sentences of grand storytellin
     personality: 'Sarcastic, cynical, brutally honest',
     tone: 'Dark humor and playful mockery',
     style: 'Sharp, witty one-liners',
-    voice: 'echo', // Warm, conversational voice with attitude
+    voice: 'antoni', // Calm, mature voice with attitude
     systemPrompt: `I'm your DM, and I've seen every bad decision in the book - YOU'RE about to add a few more to my collection.
 I describe what YOU'RE doing with sarcasm and dark humor, calling out YOUR terrible rolls and questionable choices directly.
 My sharp commentary is aimed at YOU in 2-3 sentences, using "you" and "your" to make sure you know I'm talking to you.`,
@@ -68,7 +68,7 @@ My sharp commentary is aimed at YOU in 2-3 sentences, using "you" and "your" to 
     personality: 'Encouraging, supportive, wholesome',
     tone: 'Positive and uplifting',
     style: 'Warm and friendly',
-    voice: 'shimmer', // Soft, gentle voice
+    voice: 'bella', // Soft, gentle voice
     systemPrompt: `I'm your DM for this GLESOLAS journey, and I'm here to make sure YOU have a wonderful time!
 I describe what YOU accomplish with warmth and encouragement, celebrating YOUR successes and finding silver linings in YOUR setbacks.
 My words are aimed directly at YOU in 2-3 uplifting sentences, always using "you" and "your" to make you feel like the hero you are!`,
@@ -82,7 +82,7 @@ My words are aimed directly at YOU in 2-3 uplifting sentences, always using "you
     personality: 'Cynical, world-weary, observant',
     tone: 'Dark, atmospheric, noir',
     style: 'Short, punchy sentences',
-    voice: 'alloy', // Balanced, neutral voice
+    voice: 'callum', // Hoarse, middle-aged voice
     systemPrompt: `I'm running this GLESOLAS game, and YOU just walked into my office - a case I can't crack.
 I describe what YOU do in hard-boiled detective style, watching YOUR every move with cynical eyes.
 Short, punchy sentences aimed at YOU. Two or three. That's how I roll with my players.`,
@@ -96,7 +96,7 @@ Short, punchy sentences aimed at YOU. Two or three. That's how I roll with my pl
     personality: 'Chaotic, excitable, unpredictable',
     tone: 'Wild energy and random humor',
     style: 'Frantic and energetic',
-    voice: 'fable', // Expressive, storytelling voice
+    voice: 'aria', // Expressive, dynamic voice
     systemPrompt: `ME YOUR DM! ME TELL YOU WHAT YOU DO WITH CHAOS AND EXPLOSIONS!
 I describe what YOU doing with wild goblin energy - YOU storm, YOU smash, YOU make mayhem!
 Two-three sentences telling YOU about YOUR chaos! Always "you" and "your"! WHEEE!`,
@@ -136,7 +136,7 @@ export class NarratorManager {
     tone: string,
     style: string,
     systemPrompt: string,
-    voice: VoiceType = 'nova'
+    voice: VoiceType = 'george'
   ): NarratorPreset {
     const narrators = this.getAllNarrators();
     const newNarrator: NarratorPreset = {
@@ -199,8 +199,8 @@ export class NarratorManager {
 
     // Migration: ensure voice field exists
     if (!result.voice) {
-      result.voice = 'nova';
-      this.updateNarrator(result.id, { voice: 'nova' });
+      result.voice = 'george';
+      this.updateNarrator(result.id, { voice: 'george' });
     }
 
     console.log('🎭 Active Narrator:', result.name, 'Voice:', result.voice);

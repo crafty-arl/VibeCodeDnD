@@ -33,7 +33,7 @@ export function AudioSettings({ onClose }: AudioSettingsProps) {
     setTimeout(() => setTestingVoice(null), 2000);
   };
 
-  const voices: VoiceType[] = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'];
+  const voices: VoiceType[] = ['adam', 'antoni', 'arnold', 'callum', 'george', 'aria', 'bella', 'charlotte', 'domi', 'rachel'];
 
   return (
     <motion.div
