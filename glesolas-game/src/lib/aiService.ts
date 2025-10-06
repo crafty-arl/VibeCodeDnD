@@ -1,5 +1,4 @@
 import OpenAI from 'openai';
-import { ChatOpenAI } from '@langchain/openai';
 import { jsonrepair } from 'jsonrepair';
 import type { ZodSchema } from 'zod';
 import { NarratorManager } from './narratorManager';
@@ -37,25 +36,6 @@ const client = OPENROUTER_API_KEY
     })
   : null;
 
-// LangChain client factory for structured outputs
-function createLangChainClient(temperature: number = 0.85, maxTokens: number = 80) {
-  if (!OPENROUTER_API_KEY) return null;
-
-  return new ChatOpenAI({
-    model: DEFAULT_MODEL,
-    apiKey: OPENROUTER_API_KEY,
-    temperature: temperature,
-    maxTokens: maxTokens, // Dynamic token limit - reduced for faster generation
-    timeout: 6000, // 6 second timeout for faster failures
-    configuration: {
-      baseURL: 'https://openrouter.ai/api/v1',
-      defaultHeaders: {
-        'HTTP-Referer': window.location.origin,
-        'X-Title': 'GLESOLAS Game',
-      },
-    },
-  });
-}
 
 export interface AIGenerationOptions {
   maxTokens?: number;
