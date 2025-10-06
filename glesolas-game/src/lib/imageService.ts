@@ -15,44 +15,16 @@ export interface ImageGenerationOptions {
 }
 
 /**
- * /quest Aesthetic Style Guide
- * These style parameters ensure visual consistency across all sessions
+ * Concise style guide for image generation
+ * Optimized for Pollinations.ai - short keywords for faster generation
  */
-const QUEST_AESTHETIC = {
-  // Core visual style
-  baseStyle: 'fantasy tabletop game art, hand-painted illustration style',
-
-  // Color palette guidance
-  colorPalette: 'warm medieval fantasy tones, rich earthy colors with magical accents',
-
-  // Art direction
-  artDirection: 'reminiscent of classic D&D and Magic: The Gathering card art',
-
-  // Technical quality
-  quality: 'detailed digital painting, professional game art quality, sharp focus',
-
-  // Lighting and mood
-  lighting: 'dramatic atmospheric lighting with depth',
-
-  // Composition
-  composition: 'dynamic composition, rule of thirds, clear focal point',
-
-  // Avoid these (negative prompts conceptually)
-  avoid: 'photograph, photorealistic, modern, sci-fi, anime',
-};
+const STYLE_KEYWORDS = 'fantasy RPG art, D&D style, painterly, dramatic lighting';
 
 /**
- * Builds the complete style guide string
+ * Builds the style guide string (now concise)
  */
 function getStyleGuide(): string {
-  return [
-    QUEST_AESTHETIC.baseStyle,
-    QUEST_AESTHETIC.colorPalette,
-    QUEST_AESTHETIC.artDirection,
-    QUEST_AESTHETIC.quality,
-    QUEST_AESTHETIC.lighting,
-    QUEST_AESTHETIC.composition,
-  ].join(', ');
+  return STYLE_KEYWORDS;
 }
 
 /**
@@ -122,27 +94,28 @@ export function generateSceneImageUrl(
  * @param sceneType - The type of scene (intro, challenge, resolution)
  * @param description - The narrative description
  * @param setting - Optional setting/environment details
- * @returns An enhanced prompt for image generation with GLESOLAS style guide
+ * @returns Concise prompt optimized for Pollinations.ai
  */
 export function createSceneImagePrompt(
   sceneType: string,
   description: string,
-  setting?: string
+  _setting?: string
 ): string {
-  // Scene-specific framing
-  const sceneContext = setting ? `${setting}, ` : '';
+  // Keep description VERY short - 60 chars max for fast generation
+  const shortDesc = description.length > 60
+    ? description.substring(0, 60).trim()
+    : description;
+
+  // Scene-specific framing (minimal)
   const typeContext = sceneType === 'challenge'
-    ? 'dramatic conflict scene, '
+    ? 'battle'
     : sceneType === 'resolution'
-    ? 'epic conclusion moment, '
-    : sceneType === 'transition'
-    ? 'transitional scene, '
-    : 'establishing shot, ';
+    ? 'victory'
+    : 'adventure';
 
-  // Combine scene content with consistent style guide
-  const styleGuide = getStyleGuide();
-
-  return `${typeContext}${sceneContext}${description}. Style: ${styleGuide}`;
+  // Combine: [type] [short description], [style]
+  // Format: "battle tavern brawl, fantasy RPG art, D&D style, painterly, dramatic lighting"
+  return `${typeContext} ${shortDesc}, ${getStyleGuide()}`;
 }
 
 /**

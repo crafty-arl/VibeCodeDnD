@@ -20,22 +20,15 @@ export function SceneImage({
   narrative,
   sceneType = 'scene',
   setting,
-  previousNarrative,
   width = 1024,
   height = 768,
   className = '',
 }: SceneImageProps) {
   // Create optimized prompt for image generation
   const imagePrompt = React.useMemo(() => {
-    let prompt = createSceneImagePrompt(sceneType, narrative, setting);
-
-    // Add previous scene context for continuity
-    if (previousNarrative) {
-      prompt = `Continuing from previous scene: "${previousNarrative.slice(0, 100)}...". ${prompt}`;
-    }
-
-    return prompt;
-  }, [narrative, sceneType, setting, previousNarrative]);
+    // Keep prompts short for faster generation - don't add previousNarrative
+    return createSceneImagePrompt(sceneType, narrative, setting);
+  }, [narrative, sceneType, setting]);
 
   // Generate image URL directly (React 19 compatible)
   const imageUrl = React.useMemo(() => {
@@ -67,7 +60,7 @@ export function SceneImage({
   }, [imageUrl]);
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    console.error('🖼️ Image loading failed:', {
+    console.warn('🖼️ Image loading failed (Pollinations.ai timeout or error):', {
       url: imageUrl,
       prompt: imagePrompt,
       error: e,
@@ -75,6 +68,18 @@ export function SceneImage({
     setIsLoading(false);
     setHasError(true);
   };
+
+  // Add timeout protection - hide loading state after 10 seconds
+  React.useEffect(() => {
+    if (isLoading) {
+      const timeout = setTimeout(() => {
+        console.warn('🖼️ Image loading timeout after 10s');
+        setIsLoading(false);
+        setHasError(true);
+      }, 10000);
+      return () => clearTimeout(timeout);
+    }
+  }, [isLoading, imageUrl]);
 
   // Don't render if images are disabled
   if (!areImagesEnabled()) {
