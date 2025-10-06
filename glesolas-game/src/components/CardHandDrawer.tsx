@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion, useMotionValue, useTransform } from 'framer-motion';
+import { useState, useRef } from 'react';
+import { motion, useMotionValue } from 'framer-motion';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import type { LoreCard } from '../types/game';
 import { LoreCardComponent } from './LoreCardComponent';
@@ -36,7 +36,7 @@ export function CardHandDrawer({ hand, selectedCards, onCardSelect, disabled }: 
     }
   };
 
-  const handleDragEnd = (card: LoreCard, event: any, info: any) => {
+  const handleDragEnd = (card: LoreCard, _event: any, info: any) => {
     handleLongPressEnd();
 
     // Check if dragged upward significantly (y < -80 indicates upward drag to play area)
@@ -63,7 +63,7 @@ export function CardHandDrawer({ hand, selectedCards, onCardSelect, disabled }: 
         drag="y"
         dragConstraints={{ top: -openHeight + closedHeight, bottom: 0 }}
         dragElastic={0.2}
-        onDragEnd={(e, info) => {
+        onDragEnd={(_e, info) => {
           // Auto-open/close based on drag velocity or position
           if (info.offset.y < -50 || info.velocity.y < -500) {
             setIsOpen(true);

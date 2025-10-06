@@ -9,13 +9,15 @@ const POLLINATIONS_TTS_URL = 'https://text.pollinations.ai';
 
 interface AudioSettings {
   voice: VoiceType;
+  enabled: boolean;
 }
 
 const AUDIO_SETTINGS_KEY = 'glesolas_audio_settings';
 
-// Default settings - audio is always enabled, users control via play buttons
+// Default settings - audio is enabled by default
 const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
   voice: 'nova',
+  enabled: true,
 };
 
 /**

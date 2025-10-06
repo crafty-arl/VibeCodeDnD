@@ -115,8 +115,6 @@ export function generateSceneImageUrl(
     height = 768,
     seed,
     nologo = true,
-    enhance = false, // Disable enhance to reduce complexity
-    model = 'flux', // Use flux instead of nanobanana for better compatibility
     previousPrompt,
   } = options;
 

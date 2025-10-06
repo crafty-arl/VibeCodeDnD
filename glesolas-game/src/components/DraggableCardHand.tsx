@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, Reorder, PanInfo } from 'framer-motion';
+import { motion, type PanInfo } from 'framer-motion';
 import type { LoreCard } from '../types/game';
 import { LoreCardComponent } from './LoreCardComponent';
 import { CardDetailModal } from './CardDetailModal';
@@ -22,7 +22,6 @@ export function DraggableCardHand({
 }: DraggableCardHandProps) {
   const [cards, setCards] = useState(hand);
   const [detailCard, setDetailCard] = useState<LoreCard | null>(null);
-  const [longPressCard, setLongPressCard] = useState<LoreCard | null>(null);
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Update cards when hand changes
@@ -45,7 +44,7 @@ export function DraggableCardHand({
     }
   };
 
-  const handleDragEnd = (card: LoreCard, event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+  const handleDragEnd = (card: LoreCard, _event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     handleLongPressEnd();
 
     // Check if dragged upward (y < -50 indicates upward drag)

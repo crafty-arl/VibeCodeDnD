@@ -127,10 +127,6 @@ function App() {
     localStorage.setItem('glesolas_dice', String(narrativeDice));
   }, [phase, hand, activeCards, selectedCards, introScene, currentChallenge, availableActions, lastResult, transitionScene, glory, narrativeDice]);
 
-  const handleShowDeckSelector = () => {
-    setShowDeckSelector(true);
-  };
-
   const handleDeckSelection = async (selectedCards: LoreCard[]) => {
     setShowDeckSelector(false);
     setGameMode('campaign'); // Set to campaign mode

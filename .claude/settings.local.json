@@ -29,7 +29,8 @@
       "Bash(git commit -m \"$(cat <<''EOF''\nUpdate API key and add Cloudflare deployment configuration\n\n- Updated OpenRouter API key in .env for local development\n- Added .dev.vars for Cloudflare Wrangler local development\n- Updated .gitignore to exclude sensitive environment files (.env, .dev.vars)\n- Added GITHUB_DEPLOYMENT_SETUP.md with instructions for connecting GitHub to Cloudflare Pages\n- Fixed aiService.ts self-correction mechanism and variable scoping\n- AI generation now working with Qwen3 Coder Flash model\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git rm:*)",
       "Bash(npm uninstall:*)",
-      "Bash(timeout 10 npm run dev)"
+      "Bash(timeout 10 npm run dev)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

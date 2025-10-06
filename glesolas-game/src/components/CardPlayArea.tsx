@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import type { LoreCard } from '../types/game';
 import { LoreCardComponent } from './LoreCardComponent';
@@ -27,7 +27,7 @@ export function CardPlayArea({ selectedCards, maxCards, onRemoveCard, onCardClic
       <CardContent>
         <div className="grid grid-cols-3 gap-3 min-h-[200px]">
           {/* Selected cards */}
-          {selectedCards.map((card, index) => (
+          {selectedCards.map((card) => (
             <motion.div
               key={card.id}
               initial={{ scale: 0, rotate: -180 }}
