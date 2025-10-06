@@ -1,6 +1,8 @@
 import OpenAI from 'openai';
 import { ChatOpenAI } from '@langchain/openai';
 import type { ZodSchema } from 'zod';
+import { NarratorManager } from './narratorManager';
+import { deckGenerationSchema, type GeneratedDeck } from './schemas/narrativeSchemas';
 
 /**
  * AI Service for narrative generation using OpenRouter
@@ -14,10 +16,12 @@ const AI_ENABLED = import.meta.env.VITE_AI_ENABLED !== 'false';
 const STRUCTURED_OUTPUT_ENABLED = import.meta.env.VITE_AI_STRUCTURED_OUTPUT !== 'false';
 const DEFAULT_MODEL = import.meta.env.VITE_AI_MODEL || 'qwen/qwen-2.5-72b-instruct';
 
-// System prompt for narrative generation
-const SYSTEM_PROMPT = `You are a witty storyteller for a tabletop gaming card game called GLESOLAS.
-Your tone is humorous, self-aware, and filled with tabletop gaming culture references.
-Keep responses to 2-3 sentences maximum. Be concise but entertaining.`;
+// Get active narrator's system prompt
+function getSystemPrompt(): string {
+  const prompt = NarratorManager.getSystemPrompt();
+  console.log('🎭 Active Narrator System Prompt:', prompt);
+  return prompt;
+}
 
 // OpenRouter client (compatible with OpenAI SDK) - Legacy unstructured
 const client = OPENROUTER_API_KEY
@@ -33,13 +37,15 @@ const client = OPENROUTER_API_KEY
   : null;
 
 // LangChain client factory for structured outputs
-function createLangChainClient(temperature: number = 0.85) {
+function createLangChainClient(temperature: number = 0.85, maxTokens: number = 150) {
   if (!OPENROUTER_API_KEY) return null;
 
   return new ChatOpenAI({
     model: DEFAULT_MODEL,
     apiKey: OPENROUTER_API_KEY,
     temperature: temperature,
+    maxTokens: maxTokens, // Dynamic token limit
+    timeout: 8000, // 8 second timeout (reduced from 10s)
     configuration: {
       baseURL: 'https://openrouter.ai/api/v1',
       defaultHeaders: {
@@ -86,7 +92,7 @@ export async function generateNarrative(
       messages: [
         {
           role: 'system',
-          content: SYSTEM_PROMPT,
+          content: getSystemPrompt(),
         },
         {
           role: 'user',
@@ -119,20 +125,20 @@ export async function generateStructured<T>(
   schema: ZodSchema<T>,
   options: AIGenerationOptions = {}
 ): Promise<T | null> {
-  const { temperature = 0.85, useAI = true } = options;
+  const { temperature = 0.85, maxTokens = 150, useAI = true } = options;
 
   // Check if AI and structured outputs are available
   if (!useAI || !isAIAvailable() || !STRUCTURED_OUTPUT_ENABLED) {
     return null;
   }
 
-  const MAX_RETRIES = 3;
-  const RETRY_DELAYS = [1000, 2000, 3000]; // Progressive backoff
+  const MAX_RETRIES = 2; // Reduced from 3 to 2 retries
+  const RETRY_DELAYS = [500, 1000]; // Faster retries: 0.5s, 1s (reduced from 1s, 2s, 3s)
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
-      // Create LangChain client with temperature for this attempt
-      const llm = createLangChainClient(temperature);
+      // Create LangChain client with temperature and token limit for this attempt
+      const llm = createLangChainClient(temperature, maxTokens);
       if (!llm) return null;
 
       // Create structured LLM with Zod schema
@@ -142,7 +148,7 @@ export async function generateStructured<T>(
 
       // Generate with schema validation
       const result = await structuredLlm.invoke([
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: getSystemPrompt() },
         { role: 'user', content: prompt },
       ]);
 
@@ -161,6 +167,70 @@ export async function generateStructured<T>(
   // All retries failed, return null (will fallback to templates)
   console.warn('All structured generation attempts failed, falling back to templates');
   return null;
+}
+
+/**
+ * Generate a complete themed deck with AI
+ * Creates 30-40 cards based on a theme
+ * @param theme - The theme for the deck (e.g., "space opera", "cyberpunk", "medieval fantasy")
+ * @param cardCount - Number of cards to generate (30-40)
+ * @returns Generated deck or null on error
+ */
+export async function generateDeck(
+  theme: string,
+  cardCount: number = 35
+): Promise<GeneratedDeck | null> {
+  if (!isAIAvailable() || !STRUCTURED_OUTPUT_ENABLED) {
+    return null;
+  }
+
+  // Validate card count
+  if (cardCount < 30 || cardCount > 40) {
+    console.error('Card count must be between 30 and 40');
+    return null;
+  }
+
+  const prompt = `Generate a complete deck of ${cardCount} cards for the GLESOLAS tabletop card game.
+
+**Theme:** ${theme}
+
+**Requirements:**
+1. Create exactly ${cardCount} cards total
+2. Balanced distribution: ~${Math.floor(cardCount / 3)} characters, ~${Math.floor(cardCount / 3)} items, ~${Math.floor(cardCount / 3)} locations
+3. Each card needs: name, type (character/item/location), flavor text, and stats (might, fortune, cunning from 0-5)
+4. Cards should be thematically cohesive and work well together in gameplay
+5. Stats should be balanced - mix of high and low stat cards
+6. Flavor text should be witty and reference the theme
+7. Names should be creative and memorable
+
+**Stat Guidelines:**
+- Might: Physical power, strength, combat ability
+- Fortune: Luck, chance, unpredictability
+- Cunning: Intelligence, wit, strategy
+
+Generate a deck name and description that captures the ${theme} theme, then create all ${cardCount} cards.`;
+
+  try {
+    const llm = createLangChainClient(0.9, 4000); // High creativity, large token limit for bulk generation
+    if (!llm) return null;
+
+    const structuredLlm = llm.withStructuredOutput(deckGenerationSchema, {
+      name: 'deck_generation',
+    });
+
+    console.log(`🎴 Generating ${cardCount} cards with theme: ${theme}`);
+
+    const result = await structuredLlm.invoke([
+      { role: 'system', content: 'You are a creative game designer for GLESOLAS, a tabletop card game with humor and wit.' },
+      { role: 'user', content: prompt },
+    ]);
+
+    console.log(`✅ Generated deck: ${result.deckName} with ${result.cards.length} cards`);
+    return result as GeneratedDeck;
+  } catch (error) {
+    console.error('Deck generation error:', error);
+    return null;
+  }
 }
 
 /**

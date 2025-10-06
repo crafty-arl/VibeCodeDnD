@@ -54,7 +54,7 @@ export interface Encounter {
   timestamp: number;
 }
 
-export type GamePhase = 'home' | 'intro' | 'challenge' | 'action-choice' | 'resolution' | 'ended';
+export type GamePhase = 'home' | 'intro' | 'challenge' | 'action-choice' | 'resolution' | 'transition' | 'ended';
 
 export interface ActionPath {
   path: SkillPath;
