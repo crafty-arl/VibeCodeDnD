@@ -37,15 +37,15 @@ const client = OPENROUTER_API_KEY
   : null;
 
 // LangChain client factory for structured outputs
-function createLangChainClient(temperature: number = 0.85, maxTokens: number = 150) {
+function createLangChainClient(temperature: number = 0.85, maxTokens: number = 80) {
   if (!OPENROUTER_API_KEY) return null;
 
   return new ChatOpenAI({
     model: DEFAULT_MODEL,
     apiKey: OPENROUTER_API_KEY,
     temperature: temperature,
-    maxTokens: maxTokens, // Dynamic token limit
-    timeout: 8000, // 8 second timeout (reduced from 10s)
+    maxTokens: maxTokens, // Dynamic token limit - reduced for faster generation
+    timeout: 6000, // 6 second timeout for faster failures
     configuration: {
       baseURL: 'https://openrouter.ai/api/v1',
       defaultHeaders: {
@@ -79,14 +79,18 @@ export async function generateNarrative(
   prompt: string,
   options: AIGenerationOptions = {}
 ): Promise<string | null> {
-  const { maxTokens = 200, temperature = 0.8, useAI = true } = options;
+  const { maxTokens = 80, temperature = 0.8, useAI = true } = options;
+
+  console.log('🎯 generateNarrative called', { useAI, isAIAvailable: isAIAvailable(), maxTokens });
 
   // Check if AI is available
   if (!useAI || !isAIAvailable()) {
+    console.log('⚠️ AI not available, returning null');
     return null;
   }
 
   try {
+    console.log('📡 Sending request to OpenRouter...', { model: DEFAULT_MODEL, maxTokens, temperature });
     const response = await client!.chat.completions.create({
       model: DEFAULT_MODEL,
       messages: [
@@ -104,9 +108,10 @@ export async function generateNarrative(
     });
 
     const generatedText = response.choices[0]?.message?.content?.trim();
+    console.log('✅ AI response received:', generatedText ? `${generatedText.substring(0, 50)}...` : 'EMPTY');
     return generatedText || null;
   } catch (error) {
-    console.error('AI generation error:', error);
+    console.error('❌ AI generation error:', error);
     return null; // Fallback to templates on error
   }
 }
@@ -125,37 +130,116 @@ export async function generateStructured<T>(
   schema: ZodSchema<T>,
   options: AIGenerationOptions = {}
 ): Promise<T | null> {
-  const { temperature = 0.85, maxTokens = 150, useAI = true } = options;
+  const { temperature = 0.85, maxTokens = 80, useAI = true } = options;
+
+  console.log('🎯 generateStructured called', {
+    useAI,
+    isAIAvailable: isAIAvailable(),
+    structuredEnabled: STRUCTURED_OUTPUT_ENABLED,
+    maxTokens
+  });
 
   // Check if AI and structured outputs are available
   if (!useAI || !isAIAvailable() || !STRUCTURED_OUTPUT_ENABLED) {
+    console.log('⚠️ Structured AI not available, returning null');
     return null;
   }
 
-  const MAX_RETRIES = 2; // Reduced from 3 to 2 retries
-  const RETRY_DELAYS = [500, 1000]; // Faster retries: 0.5s, 1s (reduced from 1s, 2s, 3s)
+  const MAX_RETRIES = 2;
+  const RETRY_DELAYS = [500, 1000];
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    try {
-      // Create LangChain client with temperature and token limit for this attempt
-      const llm = createLangChainClient(temperature, maxTokens);
-      if (!llm) return null;
+    let generatedText: string | undefined;
 
-      // Create structured LLM with Zod schema
-      const structuredLlm = llm.withStructuredOutput(schema, {
-        name: 'narrative_output',
+    try {
+      console.log(`📡 Structured generation attempt ${attempt + 1}/${MAX_RETRIES}...`);
+
+      // Use simple JSON mode instead of LangChain's withStructuredOutput
+      // This is more reliable with OpenRouter
+      const jsonPrompt = `${prompt}
+
+IMPORTANT: Respond ONLY with valid JSON matching this exact structure. Do not include any other text.
+${JSON.stringify(schema._def.typeName === 'ZodObject' ? Object.keys((schema as any)._def.shape()).reduce((acc: any, key: string) => {
+  acc[key] = '<your response here>';
+  return acc;
+}, {}) : {})}`;
+
+      const response = await client!.chat.completions.create({
+        model: DEFAULT_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: getSystemPrompt() + '\n\nYou must respond with valid JSON only, no other text.',
+          },
+          {
+            role: 'user',
+            content: jsonPrompt,
+          },
+        ],
+        max_tokens: maxTokens,
+        temperature: temperature,
       });
 
-      // Generate with schema validation
-      const result = await structuredLlm.invoke([
-        { role: 'system', content: getSystemPrompt() },
-        { role: 'user', content: prompt },
-      ]);
+      generatedText = response.choices[0]?.message?.content?.trim();
+      console.log('📥 Raw AI response:', generatedText?.substring(0, 100));
 
-      // LangChain already validated via Zod schema
-      return result as T;
+      if (!generatedText) {
+        throw new Error('Empty response from AI');
+      }
+
+      // Try to extract JSON if wrapped in markdown code blocks
+      let jsonText = generatedText;
+      const jsonMatch = generatedText.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+      if (jsonMatch) {
+        jsonText = jsonMatch[1];
+      }
+
+      // Parse and validate JSON
+      const parsed = JSON.parse(jsonText);
+      const validated = schema.parse(parsed);
+
+      console.log('✅ Structured AI response received and validated');
+      return validated as T;
     } catch (error) {
-      console.error(`Structured generation attempt ${attempt + 1} failed:`, error);
+      console.error(`❌ Structured generation attempt ${attempt + 1} failed:`, error);
+
+      // If we have a response but validation failed, try to fix it with AI
+      if (generatedText && error instanceof Error && attempt < MAX_RETRIES - 1) {
+        console.log('🔧 Asking AI to fix the validation errors...');
+        try {
+          const fixResponse = await client!.chat.completions.create({
+            model: DEFAULT_MODEL,
+            messages: [
+              {
+                role: 'system',
+                content: 'You are a JSON correction assistant. Fix the JSON to match the schema requirements exactly.',
+              },
+              {
+                role: 'user',
+                content: `This JSON has validation errors:\n${generatedText}\n\nErrors:\n${error.message}\n\nFix it to match these requirements:\n- All numeric fields (might_req, fortune_req, cunning_req) must be numbers (not strings)\n- challenge field must be under 300 characters\n- Keep it brief and to the point\n\nRespond with ONLY the corrected JSON, no other text.`,
+              },
+            ],
+            max_tokens: maxTokens,
+            temperature: 0.3, // Lower temperature for corrections
+          });
+
+          const fixedText = fixResponse.choices[0]?.message?.content?.trim();
+          if (fixedText) {
+            let fixedJson = fixedText;
+            const fixedMatch = fixedText.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+            if (fixedMatch) {
+              fixedJson = fixedMatch[1];
+            }
+
+            const fixedParsed = JSON.parse(fixedJson);
+            const fixedValidated = schema.parse(fixedParsed);
+            console.log('✅ AI successfully fixed validation errors!');
+            return fixedValidated as T;
+          }
+        } catch (fixError) {
+          console.error('❌ AI fix attempt failed:', fixError);
+        }
+      }
 
       // If this isn't the last attempt, wait before retrying
       if (attempt < MAX_RETRIES - 1) {
@@ -165,7 +249,7 @@ export async function generateStructured<T>(
   }
 
   // All retries failed, return null (will fallback to templates)
-  console.warn('All structured generation attempts failed, falling back to templates');
+  console.warn('⚠️ All structured generation attempts failed, falling back to templates');
   return null;
 }
 

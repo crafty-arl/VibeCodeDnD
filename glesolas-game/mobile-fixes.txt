@@ -1,0 +1,39 @@
+MOBILE RESPONSIVENESS IMPROVEMENTS FOR /QUEST
+
+=== ISSUES FOUND ===
+
+1. CompactStatsHeader.tsx:
+   - Level progress text can overflow on small screens
+   - Touch targets too small (8x8px buttons)
+   - "MAX LEVEL" text too long for mobile
+   
+2. App.tsx:
+   - Button text could be shorter on mobile
+   - Grid layouts need better responsive behavior
+   
+3. TutorialOverlay.tsx:
+   - Long tutorial text needs better wrapping
+   - Modal could be too wide on mobile
+   
+4. General Issues:
+   - Some text not using whitespace-nowrap
+   - Inconsistent touch target sizes
+   - Missing responsive text sizing (text-base vs sm:text-lg)
+
+=== FIXES TO APPLY ===
+
+1. CompactStatsHeader.tsx:
+   - Add flex-shrink-0 and whitespace-nowrap to prevent text wrapping
+   - Show abbreviated text on mobile: "{gloryToNext}" vs "{gloryToNext} to {nextLevel.name}"
+   - Change "MAX LEVEL" to "MAX" on mobile
+   - Increase touch targets from h-8 w-8 to h-9 w-9 on mobile
+   - Add touch-manipulation class for better touch response
+   - Use responsive text sizes: text-base sm:text-lg
+   - Change expanded view from flex to grid for better mobile layout
+
+2. Add global CSS utility for touch-manipulation if needed
+
+3. Ensure all buttons have minimum 44x44px touch targets on mobile (iOS HIG standard)
+
+4. Use responsive spacing: gap-2 sm:gap-3
+

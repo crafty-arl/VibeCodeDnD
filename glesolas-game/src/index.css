@@ -1,31 +1,47 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
 @theme {
-  --color-background: oklch(22% 0.05 264);
-  --color-foreground: oklch(98% 0.01 264);
-  --color-card: oklch(22% 0.05 264);
-  --color-card-foreground: oklch(98% 0.01 264);
-  --color-popover: oklch(22% 0.05 264);
-  --color-popover-foreground: oklch(98% 0.01 264);
-  --color-primary: oklch(66% 0.19 61);
-  --color-primary-foreground: oklch(27% 0.08 61);
-  --color-secondary: oklch(28% 0.04 264);
-  --color-secondary-foreground: oklch(98% 0.01 264);
-  --color-muted: oklch(28% 0.04 264);
-  --color-muted-foreground: oklch(65% 0.02 264);
-  --color-accent: oklch(59% 0.18 171);
-  --color-accent-foreground: oklch(98% 0.01 264);
-  --color-destructive: oklch(48% 0.13 29);
-  --color-destructive-foreground: oklch(98% 0.01 264);
-  --color-border: oklch(28% 0.04 264);
-  --color-input: oklch(28% 0.04 264);
-  --color-ring: oklch(66% 0.19 61);
-  --radius: 0.5rem;
-  --color-chart-1: oklch(66% 0.19 61);
-  --color-chart-2: oklch(59% 0.18 171);
-  --color-chart-3: oklch(28% 0.04 264);
-  --color-chart-4: oklch(48% 0.13 29);
-  --color-chart-5: oklch(65% 0.02 264);
+  /* /quest Brand Colors */
+  --color-obsidian: #0A0A0D;
+  --color-auric: #FFD86B;
+  --color-ether: #4FB1FF;
+  --color-ember: #FF3F6C;
+  --color-ivory: #F5F5F7;
+
+  /* Base Theme Tokens */
+  --color-background: #0A0A0D;
+  --color-foreground: #F5F5F7;
+  --color-card: #141418;
+  --color-card-foreground: #F5F5F7;
+  --color-popover: #141418;
+  --color-popover-foreground: #F5F5F7;
+  --color-primary: #FFD86B;
+  --color-primary-foreground: #0A0A0D;
+  --color-secondary: #1F1F23;
+  --color-secondary-foreground: #F5F5F7;
+  --color-muted: #1F1F23;
+  --color-muted-foreground: #A1A1AA;
+  --color-accent: #4FB1FF;
+  --color-accent-foreground: #0A0A0D;
+  --color-destructive: #FF3F6C;
+  --color-destructive-foreground: #F5F5F7;
+  --color-border: #27272A;
+  --color-input: #27272A;
+  --color-ring: #FFD86B;
+  --radius: 0.75rem;
+
+  /* Card Type Colors */
+  --color-might: #FF3F6C;
+  --color-fortune: #4FB1FF;
+  --color-cunning: #A855F7;
+
+  /* Chart Colors */
+  --color-chart-1: #FFD86B;
+  --color-chart-2: #4FB1FF;
+  --color-chart-3: #FF3F6C;
+  --color-chart-4: #A855F7;
+  --color-chart-5: #F5F5F7;
 }
 
 @layer base {
@@ -35,7 +51,58 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Typography Hierarchy */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* /quest Brand Gradients */
+@layer utilities {
+  .gradient-solar {
+    background: linear-gradient(135deg, #FFD86B 0%, #FF3F6C 100%);
+  }
+
+  .gradient-ethereal {
+    background: linear-gradient(135deg, #4FB1FF 0%, #A855F7 100%);
+  }
+
+  .gradient-mythic {
+    background: linear-gradient(180deg, #0A0A0D 0%, #1F1F23 50%, #0A0A0D 100%);
+  }
+
+  .text-gradient-solar {
+    background: linear-gradient(135deg, #FFD86B 0%, #FF3F6C 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .text-gradient-ethereal {
+    background: linear-gradient(135deg, #4FB1FF 0%, #A855F7 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Card Glow Effects */
+  .card-glow-gold {
+    box-shadow: 0 0 20px rgba(255, 216, 107, 0.15);
+  }
+
+  .card-glow-blue {
+    box-shadow: 0 0 20px rgba(79, 177, 255, 0.15);
+  }
+
+  .card-glow-ember {
+    box-shadow: 0 0 20px rgba(255, 63, 108, 0.15);
   }
 }
 

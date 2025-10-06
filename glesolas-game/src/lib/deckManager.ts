@@ -1,5 +1,6 @@
 import type { LoreCard } from '../types/game';
 import { LORE_DECK } from '../data/cards';
+import { VectorizeService } from './vectorizeService';
 
 export interface Deck {
   id: string;
@@ -49,7 +50,7 @@ export class DeckManager {
     return decks.find(d => d.id === deckId) || null;
   }
 
-  static createDeck(name: string, description: string, cards: LoreCard[]): Deck {
+  static async createDeck(name: string, description: string, cards: LoreCard[]): Promise<Deck> {
     const decks = this.getAllDecks();
     const newDeck: Deck = {
       id: `deck_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -62,10 +63,20 @@ export class DeckManager {
 
     decks.push(newDeck);
     this.saveDecks(decks);
+
+    // Sync cards to Vectorize for semantic search
+    try {
+      await VectorizeService.upsertCards(cards, newDeck.id);
+      console.log('✅ Deck synced to Vectorize');
+    } catch (error) {
+      console.warn('⚠️ Failed to sync deck to Vectorize:', error);
+      // Non-fatal: continue without Vectorize
+    }
+
     return newDeck;
   }
 
-  static updateDeck(deckId: string, updates: Partial<Omit<Deck, 'id' | 'createdAt'>>): void {
+  static async updateDeck(deckId: string, updates: Partial<Omit<Deck, 'id' | 'createdAt'>>): Promise<void> {
     const decks = this.getAllDecks();
     const index = decks.findIndex(d => d.id === deckId);
 
@@ -76,6 +87,16 @@ export class DeckManager {
         updatedAt: Date.now(),
       };
       this.saveDecks(decks);
+
+      // Re-sync cards to Vectorize if cards were updated
+      if (updates.cards) {
+        try {
+          await VectorizeService.upsertCards(updates.cards, deckId);
+          console.log('✅ Deck re-synced to Vectorize');
+        } catch (error) {
+          console.warn('⚠️ Failed to re-sync deck to Vectorize:', error);
+        }
+      }
     }
   }
 
@@ -105,8 +126,18 @@ export class DeckManager {
     return deck || createDefaultDeck();
   }
 
-  static setActiveDeck(deckId: string): void {
+  static async setActiveDeck(deckId: string): Promise<void> {
     localStorage.setItem(ACTIVE_DECK_KEY, deckId);
+
+    // Initialize Vectorize with active deck cards
+    const deck = this.getDeck(deckId);
+    if (deck) {
+      try {
+        await VectorizeService.initializeDeck(deck.cards, deckId);
+      } catch (error) {
+        console.warn('⚠️ Failed to initialize Vectorize with active deck:', error);
+      }
+    }
   }
 
   static drawRandomCards(count: number, exclude: string[] = []): LoreCard[] {

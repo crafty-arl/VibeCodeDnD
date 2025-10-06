@@ -128,27 +128,35 @@ export function generateIntroScene(cards: LoreCard[]): string {
  */
 export async function generateIntroSceneAsync(
   cards: LoreCard[],
-  useAI: boolean = true
+  useAI: boolean = true,
+  availableCards?: LoreCard[]
 ): Promise<string> {
+  console.log('🎬 generateIntroSceneAsync called', { useAI, isAIAvailable: isAIAvailable(), cardsCount: cards.length });
+
   // Attempt structured AI generation if enabled and available
   if (useAI && isAIAvailable()) {
-    const prompt = buildIntroPrompt(cards);
+    console.log('🔨 Building intro prompt...');
+    const prompt = await buildIntroPrompt(cards, availableCards);
+    console.log('📝 Prompt built, length:', prompt.length);
 
     // Try structured output (with Zod validation)
     const structuredResult = await generateStructured(prompt, introSceneSchema, {
-      maxTokens: 100, // Reduced from 150 - intro scenes are 2-3 sentences
-      temperature: 0.9, // High creativity for intro scenes
+      maxTokens: 150, // Enough for complete JSON response
+      temperature: 0.7, // Moderate creativity for better JSON compliance
     });
 
     if (structuredResult) {
+      console.log('✨ Structured result received, playing narration');
       // Preload and play audio narration for intro scene
       await preloadAndPlayNarration(structuredResult.scene);
       return structuredResult.scene;
     }
+    console.log('⚠️ Structured generation returned null, falling back to template');
     // Fall through to template if structured fails (faster than double-fallback)
   }
 
   // Final fallback to template-based generation
+  console.log('📋 Using template fallback');
   const fallbackScene = generateIntroScene(cards);
   await preloadAndPlayNarration(fallbackScene);
   return fallbackScene;

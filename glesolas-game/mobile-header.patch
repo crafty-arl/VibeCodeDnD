@@ -1,0 +1,90 @@
+--- a/components/CompactStatsHeader.tsx
++++ b/components/CompactStatsHeader.tsx
+@@ -43,15 +43,15 @@
+       <div className="flex flex-col gap-2 p-3">
+         <div className="flex items-center justify-between gap-3">
+           {/* Left: Title & Stats */}
+-          <div className="flex items-center gap-3 flex-1 min-w-0">
+-            {customTitle || <h1 className="text-lg font-bold text-gradient-solar truncate">/quest</h1>}
+-            <div className="flex items-center gap-2 text-sm">
++          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
++            {customTitle || <h1 className="text-base sm:text-lg font-bold text-gradient-solar truncate">/quest</h1>}
++            <div className="flex items-center gap-1.5 text-sm">
+               <Trophy className="w-4 h-4 text-primary flex-shrink-0" />
+               <span className="font-mono font-bold tabular-nums">{glory}</span>
+             </div>
+-            <div className="flex items-center gap-2 text-sm">
++            <div className="flex items-center gap-1.5 text-sm">
+               <Scroll className="w-4 h-4 text-accent flex-shrink-0" />
+               <span className="font-mono font-bold tabular-nums">{narrativeDice}</span>
+             </div>
+           </div>
+
+-          {/* Right: Actions */}
++          {/* Right: Actions - Better touch targets on mobile */}
+           <div className="flex items-center gap-1 flex-shrink-0">
+             {phase !== 'home' && onHome && (
+-              <Button variant="ghost" size="sm" onClick={onHome} className="h-8 w-8 p-0">
++              <Button variant="ghost" size="sm" onClick={onHome} className="h-9 w-9 sm:h-8 sm:w-8 p-0 touch-manipulation">
+                 <Home className="w-4 h-4" />
+               </Button>
+             )}
+             {phase !== 'home' && onSave && (
+-              <Button variant="ghost" size="sm" onClick={onSave} className="h-8 w-8 p-0">
++              <Button variant="ghost" size="sm" onClick={onSave} className="h-9 w-9 sm:h-8 sm:w-8 p-0 touch-manipulation">
+                 <Save className="w-4 h-4" />
+               </Button>
+             )}
+             {onLoad && (
+-              <Button variant="ghost" size="sm" onClick={onLoad} className="h-8 w-8 p-0">
++              <Button variant="ghost" size="sm" onClick={onLoad} className="h-9 w-9 sm:h-8 sm:w-8 p-0 touch-manipulation">
+                 <FolderOpen className="w-4 h-4" />
+               </Button>
+             )}
+             <Button
+               variant="ghost"
+               size="sm"
+               onClick={() => setExpanded(!expanded)}
+-              className="h-8 w-8 p-0"
++              className="h-9 w-9 sm:h-8 sm:w-8 p-0 touch-manipulation"
+             >
+               {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+             </Button>
+           </div>
+         </div>
+
+-        {/* Level Progress Bar */}
++        {/* Level Progress Bar - Better mobile wrapping */}
+         <div className="flex items-center gap-2">
+-          <div className="flex items-center gap-1 text-xs font-semibold min-w-fit">
+-            <Star className="w-3 h-3 text-yellow-500" />
+-            <span>{currentLevel.name}</span>
++          <div className="flex items-center gap-1 text-xs font-semibold min-w-fit flex-shrink-0">
++            <Star className="w-3 h-3 text-yellow-500 flex-shrink-0" />
++            <span className="whitespace-nowrap">{currentLevel.name}</span>
+           </div>
+-          <div className="flex-1">
++          <div className="flex-1 min-w-[60px]">
+             <Progress value={levelProgress} max={100} className="h-1.5" />
+           </div>
+           {nextLevel && (
+-            <span className="text-xs text-muted-foreground min-w-fit">
+-              {gloryToNext} to {nextLevel.name}
+-            </span>
++            <>
++              <span className="text-xs text-muted-foreground min-w-fit flex-shrink-0 whitespace-nowrap hidden sm:inline">
++                {gloryToNext} to {nextLevel.name}
++              </span>
++              <span className="text-xs text-muted-foreground min-w-fit flex-shrink-0 whitespace-nowrap sm:hidden">
++                {gloryToNext}
++              </span>
++            </>
+           )}
+           {!nextLevel && (
+-            <span className="text-xs text-yellow-500 min-w-fit font-semibold">
+-              MAX LEVEL
++            <span className="text-xs text-yellow-500 min-w-fit font-semibold flex-shrink-0 whitespace-nowrap">
++              MAX
+             </span>
+           )}
+         </div>

@@ -5,3 +5,10 @@ pages_build_output_dir = "dist"
 # Cloudflare Pages configuration for Vite React SPA
 # Deploy command: npx wrangler pages deploy dist
 # or use: npm run deploy
+
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "glesolas-cards"
+
+[ai]
+binding = "AI"

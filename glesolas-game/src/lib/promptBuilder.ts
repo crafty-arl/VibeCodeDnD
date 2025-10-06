@@ -1,5 +1,6 @@
 import type { LoreCard } from '@/types/game';
 import { NarratorManager } from './narratorManager';
+import { VectorizeService } from './vectorizeService';
 
 /**
  * Prompt Builder for AI Narrative Generation
@@ -9,12 +10,13 @@ import { NarratorManager } from './narratorManager';
 /**
  * Build a contextual prompt for intro scene generation
  * Uses card names, types, stats, and flavor text
+ * Enhanced with Vectorize for semantic card context
  */
-export function buildIntroPrompt(cards: LoreCard[]): string {
+export async function buildIntroPrompt(cards: LoreCard[], availableCards?: LoreCard[]): Promise<string> {
   const [character, item, location] = cards;
   const activeDM = NarratorManager.getActiveNarrator();
 
-  return `You are the DM named "${activeDM.name}" running this GLESOLAS game.
+  let basePrompt = `You are the DM named "${activeDM.name}" running this GLESOLAS game.
 
 **Your DM Personality:**
 - Personality: ${activeDM.personality}
@@ -28,9 +30,29 @@ Describe the opening scene (2-3 sentences) directly to YOUR player using "you" a
 **The Player's Cards:**
 - Character: ${character.name} - ${character.flavor}
 - Item: ${item.name} - ${item.flavor}
-- Location: ${location.name} - ${location.flavor}
+- Location: ${location.name} - ${location.flavor}`;
 
-As the DM, tell YOUR player what THEY see and do. Use second-person: "You arrive at...", "You're holding...", "You see...". Never use third-person like "the character" or "they".`;
+  // Try to get contextually relevant cards from Vectorize
+  if (availableCards && availableCards.length > 0) {
+    try {
+      const sceneContext = `${character.name} ${item.name} ${location.name} ${character.flavor} ${item.flavor} ${location.flavor}`;
+      const relevantCards = await VectorizeService.getRelevantCardsForNarrative(
+        sceneContext,
+        availableCards,
+        3
+      );
+
+      if (relevantCards.length > 0) {
+        basePrompt += `\n\n**Thematic Context (cards available in deck):**\n${relevantCards.map(c => `- ${c.name}: ${c.flavor || ''}`).join('\n')}`;
+      }
+    } catch (error) {
+      console.warn('⚠️ Vectorize query failed, continuing without context:', error);
+    }
+  }
+
+  basePrompt += `\n\nAs the DM, tell YOUR player what THEY see and do. Use second-person: "You arrive at...", "You're holding...", "You see...". Never use third-person like "the character" or "they".`;
+
+  return basePrompt;
 }
 
 /**
