@@ -52,6 +52,7 @@ export interface Encounter {
   skillCheck?: SkillCheck;
   result?: RollResult;
   timestamp: number;
+  imageUrl?: string; // Generated scene illustration
 }
 
 export type GamePhase = 'home' | 'intro' | 'challenge' | 'action-choice' | 'resolution' | 'transition' | 'ended';

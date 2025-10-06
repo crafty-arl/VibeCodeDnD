@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Scroll, Trophy, Save, FolderOpen, Home, Mic, Volume2 } from 'lucide-react';
+import { Scroll, Trophy, Mic } from 'lucide-react';
 import type { LoreCard, GamePhase, SkillCheck, RollResult, ActionPath } from './types/game';
 import type { PlaygroundStartMode, ThemeOption, PlaygroundScene, NarrativePrompt, StoryMemory } from './types/playground';
 // Removed unused import drawRandomCards
@@ -10,16 +10,14 @@ import { LoreCardComponent } from './components/LoreCardComponent';
 import { StatsDisplay } from './components/StatsDisplay';
 import { Button } from './components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
-import { Progress } from './components/ui/progress';
 import { SessionManager, type GameSession } from './lib/sessionManager';
 import { SessionManagerComponent, SaveSessionDialog } from './components/SessionManager';
 import { DeckSelector } from './components/DeckSelector';
 import { DeckBuilder } from './components/DeckBuilder';
 import { DeckManager } from './lib/deckManager';
-import { NarratorManagerComponent } from './components/NarratorManager';
 import { NarratorManager } from './lib/narratorManager';
+import { NarratorManagerComponent } from './components/NarratorManager';
 import { LoadingNarrative } from './components/LoadingNarrative';
-import { AudioSettings } from './components/AudioSettings';
 import { PlaygroundMode } from './components/PlaygroundMode';
 import { PlaygroundGameView } from './components/PlaygroundGameView';
 import {
@@ -32,9 +30,19 @@ import {
   generateStoryConclusion
 } from './lib/playgroundEngine';
 import { StoryMemoryManager } from './lib/storyMemory';
+import { GameHeader } from './components/GameHeader';
+import { GameFooter } from './components/GameFooter';
+import { BottomActionSheet, ActionSheetButton } from './components/BottomActionSheet';
+import { CardHandDrawer } from './components/CardHandDrawer';
+import { CardPlayArea } from './components/CardPlayArea';
+import { CardDetailModal } from './components/CardDetailModal';
+import { SceneNarrationButton } from './components/SceneNarrationButton';
+import { SceneImage } from './components/SceneImage';
+import { Swords, Sparkles, Dices } from 'lucide-react';
 import './index.css';
 
 function App() {
+  const [gameMode, setGameMode] = useState<'menu' | 'campaign' | 'playground'>('menu');
   const [phase, setPhase] = useState<GamePhase>('home');
   const [hand, setHand] = useState<LoreCard[]>([]); // Player's hand of 5 cards
   const [activeCards, setActiveCards] = useState<LoreCard[]>([]); // Cards drawn for intro (display only)
@@ -53,8 +61,7 @@ function App() {
   const [showDeckSelector, setShowDeckSelector] = useState(false);
   const [showDeckBuilder, setShowDeckBuilder] = useState(false);
   const [showNarratorManager, setShowNarratorManager] = useState(false);
-  const [showAudioSettings, setShowAudioSettings] = useState(false);
-  const [showPlaygroundMode, setShowPlaygroundMode] = useState(false);
+  const [detailModalCard, setDetailModalCard] = useState<LoreCard | null>(null);
 
   // Playground Mode State
   const [playgroundPhase, setPlaygroundPhase] = useState<'setup' | 'playing' | 'complete'>('setup');
@@ -126,6 +133,7 @@ function App() {
 
   const handleDeckSelection = async (selectedCards: LoreCard[]) => {
     setShowDeckSelector(false);
+    setGameMode('campaign'); // Set to campaign mode
     setIsGeneratingNarrative(true);
 
     // Use selected 3 cards plus draw 2 more from active deck for a hand of 5
@@ -147,6 +155,7 @@ function App() {
   };
 
   const handleRollInitiative = async () => {
+    setGameMode('campaign'); // Set to campaign mode
     setIsGeneratingNarrative(true);
 
     // Draw 5 random cards from active deck
@@ -186,12 +195,16 @@ function App() {
         return prev.filter(c => c.id !== card.id);
       }
       if (prev.length >= 3) {
-        // Already have 3 selected, replace the oldest one
-        return [...prev.slice(1), card];
+        // Already have 3 selected, don't add more
+        return prev;
       }
       // Add to selection
       return [...prev, card];
     });
+  };
+
+  const handleRemoveCard = (card: LoreCard) => {
+    setSelectedCards(prev => prev.filter(c => c.id !== card.id));
   };
 
   const handlePlayResponse = async () => {
@@ -312,6 +325,7 @@ function App() {
   };
 
   const handleEndSession = () => {
+    setGameMode('menu');
     setPhase('home');
     setHand([]);
     setActiveCards([]);
@@ -323,6 +337,27 @@ function App() {
     setTransitionScene('');
     setCurrentSessionId(null);
     SessionManager.clearAutoSave();
+  };
+
+  const handleStartCampaignMode = () => {
+    setGameMode('campaign');
+    setPhase('home');
+    setShowDeckSelector(true); // Go directly to deck selection
+  };
+
+  const handleStartPlaygroundMode = () => {
+    setGameMode('playground');
+    setPlaygroundPhase('setup');
+  };
+
+  const handleBackToMenu = () => {
+    setGameMode('menu');
+    setPhase('home');
+    setPlaygroundPhase('setup');
+    setPlaygroundScenes([]);
+    setPlaygroundMemory(null);
+    setPlaygroundCards([]);
+    setPlaygroundSelectedCards([]);
   };
 
   const loadSessionState = (session: GameSession) => {
@@ -374,7 +409,7 @@ function App() {
 
       if (result) {
         const { narrative, memory } = result;
-        const scene = createPlaygroundScene(narrative, undefined, cards.slice(0, 3));
+        const scene = createPlaygroundScene(narrative, undefined, cards.slice(0, 3), undefined);
         setPlaygroundScenes([scene]);
         setPlaygroundMemory(memory);
         setPlaygroundPhase('playing');
@@ -391,7 +426,6 @@ function App() {
     }
 
     setIsPlaygroundLoading(false);
-    setShowPlaygroundMode(false);
   };
 
   const handlePlaygroundPlayerAction = async (prompt: NarrativePrompt) => {
@@ -404,7 +438,8 @@ function App() {
 
     if (result) {
       const { narrative, updatedMemory } = result;
-      const scene = createPlaygroundScene(narrative, prompt.prompt, cardsToUse);
+      const previousNarrative = playgroundScenes[playgroundScenes.length - 1]?.narrative;
+      const scene = createPlaygroundScene(narrative, prompt.prompt, cardsToUse, previousNarrative);
 
       setPlaygroundScenes(prev => [...prev, scene]);
       setPlaygroundMemory(updatedMemory);
@@ -429,7 +464,8 @@ function App() {
     const narrative = await generatePlotTwist(playgroundMemory, playgroundCards);
 
     if (narrative) {
-      const scene = createPlaygroundScene(narrative, 'Plot twist injected', []);
+      const previousNarrative = playgroundScenes[playgroundScenes.length - 1]?.narrative;
+      const scene = createPlaygroundScene(narrative, 'Plot twist injected', [], previousNarrative);
       setPlaygroundScenes(prev => [...prev, scene]);
 
       const updatedMemory = StoryMemoryManager.updateMemory(
@@ -453,7 +489,8 @@ function App() {
     const narrative = await generateToneShift(playgroundMemory, newTone);
 
     if (narrative) {
-      const scene = createPlaygroundScene(narrative, `Tone shifted to ${newTone}`, []);
+      const previousNarrative = playgroundScenes[playgroundScenes.length - 1]?.narrative;
+      const scene = createPlaygroundScene(narrative, `Tone shifted to ${newTone}`, [], previousNarrative);
       setPlaygroundScenes(prev => [...prev, scene]);
 
       const updatedMemory = { ...playgroundMemory, currentTone: newTone };
@@ -527,7 +564,8 @@ function App() {
     const conclusion = await generateStoryConclusion(playgroundMemory, playgroundScenes);
 
     if (conclusion) {
-      const scene = createPlaygroundScene(conclusion, 'Story concluded', []);
+      const previousNarrative = playgroundScenes[playgroundScenes.length - 1]?.narrative;
+      const scene = createPlaygroundScene(conclusion, 'Story concluded', [], previousNarrative);
       setPlaygroundScenes(prev => [...prev, scene]);
     }
 
@@ -553,71 +591,26 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/20 to-background p-4 md:p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <motion.header
-          initial={{ y: -50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="text-center space-y-2"
-        >
-          <h1 className="text-4xl md:text-5xl font-bold text-gradient-solar">/quest</h1>
-          <p className="text-muted-foreground text-sm md:text-base">Forge your legend</p>
-        </motion.header>
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-secondary/20 to-background no-overscroll">
+      {/* Header */}
+      <GameHeader
+        glory={glory}
+        narrativeDice={narrativeDice}
+        phase={phase}
+        gameMode={gameMode}
+        onEndSession={handleEndSession}
+        onSaveSession={() => setShowSaveDialog(true)}
+        onLoadSession={() => setShowSessionManager(true)}
+      />
 
-        {/* Stats Bar */}
-        <Card className="bg-secondary/30 backdrop-blur">
-          <CardContent className="p-4 flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-primary" />
-              <span className="font-mono font-bold">{glory}</span>
-              <span className="text-xs text-muted-foreground">Glory</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Scroll className="w-5 h-5 text-accent" />
-              <span className="font-mono font-bold">{narrativeDice}</span>
-              <span className="text-xs text-muted-foreground">Dice</span>
-            </div>
-            <Progress value={narrativeDice} max={100} className="w-24 md:w-32" />
-            <div className="flex gap-2 ml-auto">
-              {phase !== 'home' && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleEndSession}
-                    className="gap-2"
-                  >
-                    <Home className="w-4 h-4" />
-                    <span className="hidden sm:inline">Menu</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowSaveDialog(true)}
-                    className="gap-2"
-                  >
-                    <Save className="w-4 h-4" />
-                    <span className="hidden sm:inline">Save</span>
-                  </Button>
-                </>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowSessionManager(true)}
-                className="gap-2"
-              >
-                <FolderOpen className="w-4 h-4" />
-                <span className="hidden sm:inline">Load</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8">
+        <div className="max-w-4xl mx-auto space-y-6">
 
         {/* Game Phases */}
         <AnimatePresence mode="wait">
-          {phase === 'home' && !showDeckSelector && !showDeckBuilder && !showNarratorManager && !showAudioSettings && !showPlaygroundMode && (
+          {/* MAIN MENU */}
+          {gameMode === 'menu' && !showDeckBuilder && !showNarratorManager && (
             <motion.div
               key="home"
               initial={{ opacity: 0, scale: 0.9 }}
@@ -639,7 +632,7 @@ function App() {
               </motion.div>
 
               {/* Main Action Buttons - Large and Prominent */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <motion.div
                   initial={{ x: -50, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
@@ -648,7 +641,7 @@ function App() {
                   whileTap={{ scale: 0.98 }}
                 >
                   <Card className="border-2 border-primary/50 bg-gradient-to-br from-primary/10 via-background to-background hover:border-primary hover:shadow-xl hover:shadow-primary/20 transition-all cursor-pointer h-full"
-                    onClick={handleShowDeckSelector}
+                    onClick={handleStartCampaignMode}
                   >
                     <CardContent className="p-8 flex flex-col items-center justify-center space-y-4 h-full min-h-[200px]">
                       <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center">
@@ -675,7 +668,7 @@ function App() {
                   whileTap={{ scale: 0.98 }}
                 >
                   <Card className="border-2 border-secondary/50 bg-gradient-to-br from-secondary/10 via-background to-background hover:border-secondary hover:shadow-xl hover:shadow-secondary/20 transition-all cursor-pointer h-full"
-                    onClick={() => setShowPlaygroundMode(true)}
+                    onClick={handleStartPlaygroundMode}
                   >
                     <CardContent className="p-8 flex flex-col items-center justify-center space-y-4 h-full min-h-[200px]">
                       <div className="w-20 h-20 rounded-full bg-secondary/20 flex items-center justify-center">
@@ -730,7 +723,7 @@ function App() {
                     <CardTitle className="text-center text-lg">Game Configuration</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* Deck Management */}
                       <motion.div
                         whileHover={{ y: -2 }}
@@ -749,7 +742,7 @@ function App() {
                         </div>
                       </motion.div>
 
-                      {/* DM Selection */}
+                      {/* DM/Narrator Manager */}
                       <motion.div
                         whileHover={{ y: -2 }}
                         className="cursor-pointer"
@@ -764,24 +757,6 @@ function App() {
                             Active: <span className="font-semibold text-foreground">{NarratorManager.getActiveNarrator().name}</span>
                           </p>
                           <p className="text-xs text-accent text-center font-medium">Click to manage →</p>
-                        </div>
-                      </motion.div>
-
-                      {/* Audio Settings */}
-                      <motion.div
-                        whileHover={{ y: -2 }}
-                        className="cursor-pointer"
-                        onClick={() => setShowAudioSettings(true)}
-                      >
-                        <div className="p-4 rounded-lg border border-border hover:border-secondary/50 hover:bg-secondary/5 transition-all space-y-2">
-                          <div className="flex items-center gap-2 justify-center">
-                            <Volume2 className="w-5 h-5 text-secondary" />
-                            <h4 className="font-semibold">Voice Narration</h4>
-                          </div>
-                          <p className="text-xs text-muted-foreground text-center">
-                            Configure audio settings
-                          </p>
-                          <p className="text-xs text-secondary text-center font-medium">Click to configure →</p>
                         </div>
                       </motion.div>
                     </div>
@@ -803,39 +778,24 @@ function App() {
             </motion.div>
           )}
 
-          {phase === 'home' && showDeckSelector && (
+          {/* CAMPAIGN MODE */}
+          {gameMode === 'campaign' && phase === 'home' && showDeckSelector && (
             <DeckSelector
               onConfirmSelection={handleDeckSelection}
-              onCancel={() => setShowDeckSelector(false)}
+              onCancel={() => setGameMode('menu')}
             />
           )}
 
-          {phase === 'home' && showDeckBuilder && (
-            <DeckBuilder
-              onClose={() => setShowDeckBuilder(false)}
-            />
-          )}
 
-          {phase === 'home' && showNarratorManager && (
-            <NarratorManagerComponent
-              onClose={() => setShowNarratorManager(false)}
-            />
-          )}
-
-          {phase === 'home' && showAudioSettings && (
-            <AudioSettings
-              onClose={() => setShowAudioSettings(false)}
-            />
-          )}
-
-          {phase === 'home' && showPlaygroundMode && playgroundPhase === 'setup' && (
+          {/* PLAYGROUND MODE */}
+          {gameMode === 'playground' && playgroundPhase === 'setup' && (
             <PlaygroundMode
               onStartMode={handlePlaygroundStart}
-              onBack={() => setShowPlaygroundMode(false)}
+              onBack={handleBackToMenu}
             />
           )}
 
-          {phase === 'home' && playgroundPhase === 'playing' && playgroundMemory && (
+          {gameMode === 'playground' && playgroundPhase === 'playing' && playgroundMemory && (
             <PlaygroundGameView
               scenes={playgroundScenes}
               currentNarrative={playgroundScenes[playgroundScenes.length - 1]?.narrative || ''}
@@ -858,7 +818,8 @@ function App() {
             />
           )}
 
-          {phase === 'intro' && (
+          {/* CAMPAIGN PHASES */}
+          {gameMode === 'campaign' && phase === 'intro' && (
             <motion.div
               key="intro"
               initial={{ opacity: 0, x: 100 }}
@@ -876,16 +837,27 @@ function App() {
                   {isGeneratingNarrative ? (
                     <LoadingNarrative type="intro" />
                   ) : (
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.3 }}
-                      className="text-lg leading-relaxed"
-                    >
-                      {introScene}
-                    </motion.p>
+                    <>
+                      {/* Scene Image */}
+                      <SceneImage
+                        narrative={introScene}
+                        sceneType="intro"
+                      />
+
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.3 }}
+                        className="text-lg leading-relaxed"
+                      >
+                        {introScene}
+                      </motion.p>
+
+                      {/* Play Narration Button */}
+                      <SceneNarrationButton text={introScene} className="w-full" />
+                    </>
                   )}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="mobile-card-grid">
                     {activeCards.map(card => (
                       <LoreCardComponent key={card.id} card={card} disabled />
                     ))}
@@ -898,7 +870,7 @@ function App() {
             </motion.div>
           )}
 
-          {phase === 'challenge' && (
+          {gameMode === 'campaign' && phase === 'challenge' && (
             <motion.div
               key="challenge"
               initial={{ opacity: 0, x: 100 }}
@@ -922,7 +894,18 @@ function App() {
                       <CardTitle>Skill Check!</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                      {/* Scene Image */}
+                      <SceneImage
+                        narrative={currentChallenge.scene}
+                        sceneType="challenge"
+                        previousNarrative={introScene}
+                      />
+
                       <p className="text-lg leading-relaxed">{currentChallenge.scene}</p>
+
+                      {/* Play Narration Button */}
+                      <SceneNarrationButton text={currentChallenge.scene} className="w-full" />
+
                   <StatsDisplay
                     might={calculateTotalStats(selectedCards).might}
                     fortune={calculateTotalStats(selectedCards).fortune}
@@ -932,50 +915,58 @@ function App() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">
-                    Your Hand - Select 3 Cards to Play ({selectedCards.length}/3 selected)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-xs text-muted-foreground">
-                    Choose 3 cards from your hand of {hand.length} to play in this encounter
-                  </p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                    {hand.map(card => (
-                      <LoreCardComponent
-                        key={card.id}
-                        card={card}
-                        selected={selectedCards.some(c => c.id === card.id)}
-                        onClick={() => handleCardSelect(card)}
-                      />
-                    ))}
-                  </div>
-                  <Button
-                    onClick={handlePlayResponse}
-                    disabled={selectedCards.length !== 3 || isGeneratingNarrative}
-                    className="w-full"
-                    size="lg"
-                  >
-                    {isGeneratingNarrative ? 'Generating Actions...' : 'Play Selected Cards'}
-                  </Button>
-                </CardContent>
-              </Card>
+              <CardPlayArea
+                selectedCards={selectedCards}
+                maxCards={3}
+                onRemoveCard={handleRemoveCard}
+                onCardClick={setDetailModalCard}
+              />
+
+              <CardHandDrawer
+                hand={hand}
+                selectedCards={selectedCards}
+                onCardSelect={handleCardSelect}
+              />
+
+              <div className="pb-16">
+                <Button
+                  onClick={handlePlayResponse}
+                  disabled={selectedCards.length !== 3 || isGeneratingNarrative}
+                  className="w-full instant-feedback"
+                  size="lg"
+                >
+                  {isGeneratingNarrative ? 'Generating Actions...' : selectedCards.length === 3 ? '⚔️ Play Cards' : `Select ${3 - selectedCards.length} More Card${3 - selectedCards.length > 1 ? 's' : ''}`}
+                </Button>
+              </div>
               </>
             ) : null}
             </motion.div>
           )}
 
-          {phase === 'action-choice' && availableActions.length > 0 && (
+          {gameMode === 'campaign' && phase === 'action-choice' && availableActions.length > 0 && (
             <motion.div
               key="action-choice"
               initial={{ opacity: 0, x: 100 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -100 }}
-              className="space-y-6"
+              className="space-y-6 pb-24"
             >
-              <Card className="border-accent/50">
+              {/* Show selected cards - moved to top for context */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Cards Played</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="mobile-card-grid">
+                    {selectedCards.map(card => (
+                      <LoreCardComponent key={card.id} card={card} disabled />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Desktop: Show actions inline */}
+              <Card className="border-accent/50 hidden md:block">
                 <CardHeader>
                   <CardTitle>
                     {isGeneratingNarrative ? '✨ Weaving Your Stories...' : 'Choose Your Path'}
@@ -1026,23 +1017,49 @@ function App() {
                 </CardContent>
               </Card>
 
-              {/* Show selected cards */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Cards Played</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {selectedCards.map(card => (
-                      <LoreCardComponent key={card.id} card={card} disabled />
-                    ))}
-                  </div>
+              {/* Mobile: Floating hint card */}
+              <Card className="md:hidden border-accent/50 bg-accent/10">
+                <CardContent className="p-4 text-center">
+                  <p className="text-sm font-medium">
+                    {isGeneratingNarrative ? '✨ Weaving your stories...' : '⬇️ Tap to choose your path'}
+                  </p>
                 </CardContent>
               </Card>
             </motion.div>
           )}
 
-          {phase === 'resolution' && lastResult && (
+          {/* Mobile Bottom Sheet for Action Choices */}
+          <BottomActionSheet
+            open={gameMode === 'campaign' && phase === 'action-choice' && !isGeneratingNarrative && availableActions.length > 0}
+            title="Choose Your Path"
+          >
+            <p className="text-sm text-muted-foreground mb-4">
+              You've played your cards. Now choose how to use them:
+            </p>
+            <div className="space-y-3">
+              {availableActions.map(action => {
+                const icons = {
+                  might: <Swords className="w-6 h-6 text-red-400" />,
+                  fortune: <Dices className="w-6 h-6 text-green-400" />,
+                  cunning: <Sparkles className="w-6 h-6 text-blue-400" />
+                };
+
+                return (
+                  <ActionSheetButton
+                    key={action.path}
+                    onClick={() => handleActionChoice(action.path)}
+                    disabled={!action.unlocked}
+                    locked={!action.unlocked}
+                    title={action.path.toUpperCase()}
+                    description={action.narrative}
+                    icon={icons[action.path as keyof typeof icons]}
+                  />
+                );
+              })}
+            </div>
+          </BottomActionSheet>
+
+          {gameMode === 'campaign' && phase === 'resolution' && lastResult && (
             <motion.div
               key="resolution"
               initial={{ opacity: 0, scale: 0.9 }}
@@ -1064,7 +1081,19 @@ function App() {
                   {isGeneratingNarrative ? (
                     <LoadingNarrative type="resolution" />
                   ) : (
-                    <p className="text-lg leading-relaxed">{lastResult.scene}</p>
+                    <>
+                      {/* Scene Image */}
+                      <SceneImage
+                        narrative={lastResult.scene}
+                        sceneType="resolution"
+                        previousNarrative={currentChallenge?.scene}
+                      />
+
+                      <p className="text-lg leading-relaxed">{lastResult.scene}</p>
+
+                      {/* Play Narration Button */}
+                      <SceneNarrationButton text={lastResult.scene} className="w-full" />
+                    </>
                   )}
                   <div className="grid grid-cols-2 gap-4 p-4 bg-secondary rounded-lg">
                     <div>
@@ -1076,12 +1105,16 @@ function App() {
                       <p className="font-mono font-bold text-primary">+{lastResult.gloryGained}</p>
                     </div>
                   </div>
-                  <div className="flex gap-3">
+                  {/* Action buttons - now visible on all devices */}
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <Button onClick={handleNextEncounter} className="flex-1" size="lg" disabled={narrativeDice < 1 || isGeneratingNarrative}>
-                      Next Encounter
+                      ⚔️ Next Encounter
+                      {narrativeDice < 1 && (
+                        <span className="ml-2 text-xs">(Need Dice)</span>
+                      )}
                     </Button>
                     <Button onClick={handleEndSession} variant="outline" className="flex-1" size="lg">
-                      End Session
+                      🏠 End Session
                     </Button>
                   </div>
                 </CardContent>
@@ -1089,7 +1122,7 @@ function App() {
             </motion.div>
           )}
 
-          {phase === 'transition' && (
+          {gameMode === 'campaign' && phase === 'transition' && (
             <motion.div
               key="transition"
               initial={{ opacity: 0, x: 50 }}
@@ -1108,6 +1141,13 @@ function App() {
                     <LoadingNarrative type="transition" />
                   ) : (
                     <>
+                      {/* Scene Image */}
+                      <SceneImage
+                        narrative={transitionScene}
+                        sceneType="transition"
+                        previousNarrative={lastResult?.scene}
+                      />
+
                       <p className="text-lg leading-relaxed italic">{transitionScene}</p>
                       <Button onClick={handleContinueFromTransition} className="w-full" size="lg">
                         Continue →
@@ -1120,22 +1160,49 @@ function App() {
           )}
         </AnimatePresence>
 
+        {/* Configuration Modals */}
+        {gameMode === 'menu' && showDeckBuilder && (
+          <DeckBuilder
+            onClose={() => setShowDeckBuilder(false)}
+          />
+        )}
+
+        {gameMode === 'menu' && showNarratorManager && (
+          <NarratorManagerComponent
+            onClose={() => setShowNarratorManager(false)}
+          />
+        )}
+
         {/* Session Management Modals */}
         <AnimatePresence>
           {showSessionManager && (
             <SessionManagerComponent
+              key="session-manager"
               onLoadSession={handleLoadSession}
               onClose={() => setShowSessionManager(false)}
             />
           )}
           {showSaveDialog && (
             <SaveSessionDialog
+              key="save-dialog"
               onSave={handleSaveSession}
               onClose={() => setShowSaveDialog(false)}
             />
           )}
         </AnimatePresence>
-      </div>
+
+        {/* Global Card Detail Modal */}
+        <CardDetailModal
+          card={detailModalCard}
+          open={!!detailModalCard}
+          onClose={() => setDetailModalCard(null)}
+          disabled
+        />
+        </div>
+      </main>
+
+      {/* Footer */}
+      <GameFooter />
     </div>
   );
 }

@@ -8,7 +8,6 @@ import {
   transitionSceneSchema,
   challengeSchema,
 } from '@/lib/schemas/narrativeSchemas';
-import { preloadAndPlayNarration } from '@/lib/audioService';
 
 // TPG-themed intro scenes (Mad-libs style)
 export const INTRO_TEMPLATES = [
@@ -146,9 +145,7 @@ export async function generateIntroSceneAsync(
     });
 
     if (structuredResult) {
-      console.log('✨ Structured result received, playing narration');
-      // Preload and play audio narration for intro scene
-      await preloadAndPlayNarration(structuredResult.scene);
+      console.log('✨ Structured result received');
       return structuredResult.scene;
     }
     console.log('⚠️ Structured generation returned null, falling back to template');
@@ -158,7 +155,6 @@ export async function generateIntroSceneAsync(
   // Final fallback to template-based generation
   console.log('📋 Using template fallback');
   const fallbackScene = generateIntroScene(cards);
-  await preloadAndPlayNarration(fallbackScene);
   return fallbackScene;
 }
 
@@ -199,8 +195,6 @@ export async function generateResolutionSceneAsync(
     });
 
     if (structuredResult) {
-      // Preload and play audio narration for resolution scene
-      await preloadAndPlayNarration(structuredResult.resolution);
       return structuredResult.resolution;
     }
     // Fall through to template if structured fails (faster than double-fallback)
@@ -208,7 +202,6 @@ export async function generateResolutionSceneAsync(
 
   // Final fallback to template-based generation
   const fallbackScene = generateResolutionScene(path, success);
-  await preloadAndPlayNarration(fallbackScene);
   return fallbackScene;
 }
 
@@ -306,13 +299,11 @@ export async function generateChallengeAsync(
 
     // Try structured output first (with Zod validation)
     const structuredResult = await generateStructured(prompt, challengeSchema, {
-      maxTokens: 100, // Reduced from 200 - challenges are 1-2 sentences
-      temperature: 0.85, // Balanced creativity for challenges
+      maxTokens: 150, // Increased to ensure complete response
+      temperature: 0.7, // Lower temperature for better format compliance
     });
 
     if (structuredResult) {
-      // Preload and play audio narration for challenge
-      await preloadAndPlayNarration(structuredResult.challenge);
       return {
         scene: structuredResult.challenge,
         requirements: {
@@ -326,6 +317,5 @@ export async function generateChallengeAsync(
 
   // Final fallback to random challenge from static list
   const fallbackChallenge = getRandomChallenge();
-  await preloadAndPlayNarration(fallbackChallenge.scene);
   return fallbackChallenge;
 }

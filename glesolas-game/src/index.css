@@ -124,4 +124,60 @@
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background: var(--color-accent);
   }
+
+  /* Mobile Gaming Optimizations */
+  .mobile-touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .snappy-transition {
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .instant-feedback {
+    transition: transform 0.08s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .instant-feedback:active {
+    transform: scale(0.96);
+  }
+
+  /* Prevent overscroll bounce on mobile */
+  .no-overscroll {
+    overscroll-behavior: contain;
+  }
+
+  /* Mobile-optimized card grid */
+  .mobile-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+  }
+
+  @media (min-width: 768px) {
+    .mobile-card-grid {
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+  }
+
+  /* Safe area for mobile notch/home indicator */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Reduce motion for accessibility but keep essential feedback */
+  @media (prefers-reduced-motion: reduce) {
+    .instant-feedback {
+      transition: none;
+    }
+    .instant-feedback:active {
+      transform: scale(0.98);
+    }
+  }
 }

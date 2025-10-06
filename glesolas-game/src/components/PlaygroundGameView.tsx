@@ -9,6 +9,7 @@ import { StoryControls } from './StoryControls';
 import { AICoAuthorPanel } from './AICoAuthorPanel';
 import { ExpandableNarrative } from './ExpandableNarrative';
 import { CardCarousel } from './CardCarousel';
+import { SceneImage } from './SceneImage';
 import type { LoreCard } from '../types/game';
 import type { PlaygroundScene, NarrativePrompt, StoryMemory } from '../types/playground';
 import { X } from 'lucide-react';
@@ -108,6 +109,13 @@ export function PlaygroundGameView({
                           <div className="text-sm">{scene.playerAction}</div>
                         </div>
                       )}
+
+                      {/* Scene Image - Use React hook for dynamic generation */}
+                      <SceneImage
+                        narrative={scene.narrative}
+                        sceneType="scene"
+                        previousNarrative={index > 0 ? scenes[index - 1].narrative : undefined}
+                      />
 
                       {/* AI Narrative */}
                       <ExpandableNarrative

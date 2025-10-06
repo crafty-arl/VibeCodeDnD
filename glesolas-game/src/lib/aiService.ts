@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { ChatOpenAI } from '@langchain/openai';
+import { jsonrepair } from 'jsonrepair';
 import type { ZodSchema } from 'zod';
 import { NarratorManager } from './narratorManager';
 import { deckGenerationSchema, type GeneratedDeck } from './schemas/narrativeSchemas';
@@ -63,6 +64,43 @@ export interface AIGenerationOptions {
 }
 
 /**
+ * Helper function to extract schema shape from Zod for examples
+ */
+function getSchemaExample(schema: ZodSchema<any>): Record<string, any> {
+  const schemaDef = (schema as any)._def;
+
+  if (schemaDef?.typeName === 'ZodObject') {
+    const shape = schemaDef.shape();
+    const example: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries(shape)) {
+      const fieldDef = (value as any)._def;
+
+      // Get description if available
+      const description = fieldDef?.description || '';
+
+      // Determine example value based on type
+      if (fieldDef?.typeName === 'ZodString') {
+        example[key] = `<string: ${description || key}>`;
+      } else if (fieldDef?.typeName === 'ZodNumber') {
+        example[key] = 0;
+      } else if (fieldDef?.typeName === 'ZodBoolean') {
+        example[key] = true;
+      } else if (fieldDef?.typeName === 'ZodEnum') {
+        const values = fieldDef?.values || [];
+        example[key] = values[0] || 'value';
+      } else {
+        example[key] = null;
+      }
+    }
+
+    return example;
+  }
+
+  return {};
+}
+
+/**
  * Check if AI service is available and configured
  */
 export function isAIAvailable(): boolean {
@@ -117,8 +155,8 @@ export async function generateNarrative(
 }
 
 /**
- * Generate structured narrative content with Zod validation
- * Includes automatic retry logic for schema validation failures
+ * Generate structured narrative content with Zod validation using LangChain
+ * Uses proper withStructuredOutput() method as recommended by LangChain docs
  *
  * @param prompt - The prompt to send to the AI
  * @param schema - Zod schema for validation
@@ -130,7 +168,7 @@ export async function generateStructured<T>(
   schema: ZodSchema<T>,
   options: AIGenerationOptions = {}
 ): Promise<T | null> {
-  const { temperature = 0.85, maxTokens = 80, useAI = true } = options;
+  const { temperature = 0.85, maxTokens = 150, useAI = true } = options;
 
   console.log('🎯 generateStructured called', {
     useAI,
@@ -146,7 +184,6 @@ export async function generateStructured<T>(
   }
 
   const MAX_RETRIES = 2;
-  const RETRY_DELAYS = [500, 1000];
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     let generatedText: string | undefined;
@@ -154,51 +191,64 @@ export async function generateStructured<T>(
     try {
       console.log(`📡 Structured generation attempt ${attempt + 1}/${MAX_RETRIES}...`);
 
-      // Use simple JSON mode instead of LangChain's withStructuredOutput
-      // This is more reliable with OpenRouter
-      const exampleShape = (schema as any)._def?.shape ?
-        Object.keys((schema as any)._def.shape()).reduce((acc: any, key: string) => {
-          acc[key] = '<your response here>';
-          return acc;
-        }, {}) : {};
+      // Generate schema example
+      const schemaExample = getSchemaExample(schema);
+      const exampleJson = JSON.stringify(schemaExample, null, 2);
 
-      const jsonPrompt = `${prompt}
-
-IMPORTANT: Respond ONLY with valid JSON matching this exact structure. Do not include any other text.
-${JSON.stringify(exampleShape)}`;
-
+      // OpenRouter doesn't support function calling for all models
+      // Use JSON mode with explicit schema in prompt
       const response = await client!.chat.completions.create({
         model: DEFAULT_MODEL,
         messages: [
           {
             role: 'system',
-            content: getSystemPrompt() + '\n\nYou must respond with valid JSON only, no other text.',
+            content: getSystemPrompt() + '\n\n**CRITICAL INSTRUCTIONS:**\n- You MUST respond with ONLY valid JSON\n- No markdown code blocks\n- No explanations or additional text\n- ALL fields in the schema are REQUIRED - do not omit any field',
           },
           {
             role: 'user',
-            content: jsonPrompt,
+            content: `${prompt}\n\n**REQUIRED JSON SCHEMA:**
+You MUST return a JSON object matching this EXACT structure. All fields are REQUIRED:
+
+\`\`\`json
+${exampleJson}
+\`\`\`
+
+**CRITICAL RULES:**
+- Every field in the schema MUST be present in your response
+- String fields must have actual content (not placeholders)
+- Number fields must be actual numbers (not strings)
+- Do NOT add extra fields not in the schema
+- Response must be valid, parseable JSON
+
+Return ONLY the JSON object now:`,
           },
         ],
         max_tokens: maxTokens,
         temperature: temperature,
+        response_format: { type: 'json_object' }, // Force JSON mode
       });
 
       generatedText = response.choices[0]?.message?.content?.trim();
-      console.log('📥 Raw AI response:', generatedText?.substring(0, 100));
+      console.log('📥 Raw AI response:', generatedText?.substring(0, 200));
 
       if (!generatedText) {
         throw new Error('Empty response from AI');
       }
 
-      // Try to extract JSON if wrapped in markdown code blocks
+      // Clean and parse the response
       let jsonText = generatedText;
-      const jsonMatch = generatedText.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
-      if (jsonMatch) {
-        jsonText = jsonMatch[1];
+
+      // Remove markdown code blocks if present
+      if (jsonText.includes('```')) {
+        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
       }
 
-      // Parse and validate JSON
-      const parsed = JSON.parse(jsonText);
+      // Use jsonrepair to fix common JSON issues (unterminated strings, missing commas, etc.)
+      console.log('🔧 Repairing JSON...');
+      const repairedJson = jsonrepair(jsonText);
+
+      // Parse and validate with Zod
+      const parsed = JSON.parse(repairedJson);
       const validated = schema.parse(parsed);
 
       console.log('✅ Structured AI response received and validated');
@@ -206,37 +256,56 @@ ${JSON.stringify(exampleShape)}`;
     } catch (error) {
       console.error(`❌ Structured generation attempt ${attempt + 1} failed:`, error);
 
-      // If we have a response but validation failed, try to fix it with AI
+      // If we have a response but it failed validation, try AI self-correction
       if (generatedText && error instanceof Error && attempt < MAX_RETRIES - 1) {
-        console.log('🔧 Asking AI to fix the validation errors...');
+        console.log('🔧 Asking AI to fix the errors...');
         try {
+          const schemaExample = getSchemaExample(schema);
+          const exampleJson = JSON.stringify(schemaExample, null, 2);
+
           const fixResponse = await client!.chat.completions.create({
             model: DEFAULT_MODEL,
             messages: [
               {
                 role: 'system',
-                content: 'You are a JSON correction assistant. Fix the JSON to match the schema requirements exactly.',
+                content: 'You are a JSON repair expert. Fix the broken JSON to exactly match the required schema.',
               },
               {
                 role: 'user',
-                content: `This JSON has validation errors:\n${generatedText}\n\nErrors:\n${error.message}\n\nFix it to match these requirements:\n- All numeric fields (might_req, fortune_req, cunning_req) must be numbers (not strings)\n- challenge field must be under 300 characters\n- Keep it brief and to the point\n\nRespond with ONLY the corrected JSON, no other text.`,
+                content: `**BROKEN JSON:**
+\`\`\`json
+${generatedText}
+\`\`\`
+
+**ERROR:**
+${error.message}
+
+**REQUIRED SCHEMA (ALL FIELDS REQUIRED):**
+\`\`\`json
+${exampleJson}
+\`\`\`
+
+**FIX INSTRUCTIONS:**
+1. Add ANY missing required fields from the schema
+2. Ensure all strings are properly quoted and terminated
+3. All numeric fields must be actual numbers (not strings)
+4. Remove any extra fields not in schema
+5. Keep string content under character limits
+
+Return ONLY the corrected JSON object:`,
               },
             ],
             max_tokens: maxTokens,
             temperature: 0.3, // Lower temperature for corrections
+            response_format: { type: 'json_object' },
           });
 
           const fixedText = fixResponse.choices[0]?.message?.content?.trim();
           if (fixedText) {
-            let fixedJson = fixedText;
-            const fixedMatch = fixedText.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
-            if (fixedMatch) {
-              fixedJson = fixedMatch[1];
-            }
-
-            const fixedParsed = JSON.parse(fixedJson);
+            const repairedFixed = jsonrepair(fixedText);
+            const fixedParsed = JSON.parse(repairedFixed);
             const fixedValidated = schema.parse(fixedParsed);
-            console.log('✅ AI successfully fixed validation errors!');
+            console.log('✅ AI successfully fixed the errors!');
             return fixedValidated as T;
           }
         } catch (fixError) {
@@ -246,7 +315,8 @@ ${JSON.stringify(exampleShape)}`;
 
       // If this isn't the last attempt, wait before retrying
       if (attempt < MAX_RETRIES - 1) {
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS[attempt]));
+        console.log(`⏳ Retrying in ${500 * (attempt + 1)}ms...`);
+        await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
       }
     }
   }

@@ -23,7 +23,13 @@
       "Bash(test:*)",
       "Bash(cat:*)",
       "Bash(curl:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nAdd playground mode, fix AI generation, and optimize performance\n\nMajor Features:\n- Implemented Playground Mode with AI co-authoring and free-form storytelling\n- Added Vectorize semantic search integration for card recommendations\n- Created comprehensive UI components (CustomPromptInput, StoryControls, AICoAuthorPanel)\n- Built playgroundEngine for AI-driven narrative generation\n\nAI Service Improvements:\n- Switched from LangChain to direct JSON prompting for better OpenRouter compatibility\n- Added AI self-correction mechanism for validation errors\n- Switched to Qwen3 Coder Flash model (5x cheaper, optimized for structured outputs)\n- Reduced token limits across all generation functions (60-150 tokens)\n- Added comprehensive logging for debugging\n\nVectorize Integration:\n- Environment detection to disable Vectorize in local dev\n- Automatic card embedding and semantic search\n- RAG-enhanced narrative generation with relevant card context\n- Functions API endpoints for embedding and querying\n\nBug Fixes:\n- Fixed TypeScript compilation errors (unused variables, missing props)\n- Fixed Content Security Policy for Google Fonts\n- Fixed Vectorize API data structure\n- Corrected LoreCard type references (flavor vs description)\n\nDocumentation:\n- Added AI_SETUP_INSTRUCTIONS.md\n- Added DEPLOYMENT_COMPLETE.md\n- Added VECTORIZE_INTEGRATION_COMPLETE.md\n- Added design docs for Arena, Story, and Playground modes\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nUpdate API key and add Cloudflare deployment configuration\n\n- Updated OpenRouter API key in .env for local development\n- Added .dev.vars for Cloudflare Wrangler local development\n- Updated .gitignore to exclude sensitive environment files (.env, .dev.vars)\n- Added GITHUB_DEPLOYMENT_SETUP.md with instructions for connecting GitHub to Cloudflare Pages\n- Fixed aiService.ts self-correction mechanism and variable scoping\n- AI generation now working with Qwen3 Coder Flash model\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git rm:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(timeout 10 npm run dev)"
     ],
     "deny": [],
     "ask": []

@@ -19,12 +19,6 @@ export function AudioSettings({ onClose }: AudioSettingsProps) {
     saveAudioSettings({ enabled: newEnabled });
   };
 
-  const handleToggleAutoPlay = () => {
-    const newAutoPlay = !settings.autoPlay;
-    setSettings(prev => ({ ...prev, autoPlay: newAutoPlay }));
-    saveAudioSettings({ autoPlay: newAutoPlay });
-  };
-
   const handleVoiceChange = (voice: VoiceType) => {
     setSettings(prev => ({ ...prev, voice }));
     saveAudioSettings({ voice });
@@ -53,7 +47,7 @@ export function AudioSettings({ onClose }: AudioSettingsProps) {
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Volume2 className="w-5 h-5" />
-              <span>Audio Settings</span>
+              <span>Voice Narration Settings</span>
             </div>
             <Button onClick={onClose} variant="ghost" size="sm">
               <X className="w-4 h-4" />
@@ -72,7 +66,7 @@ export function AudioSettings({ onClose }: AudioSettingsProps) {
               <div>
                 <p className="font-semibold">Voice Narration</p>
                 <p className="text-sm text-muted-foreground">
-                  {settings.enabled ? 'Enabled' : 'Disabled'}
+                  {settings.enabled ? 'Press play buttons to hear narration' : 'Disabled'}
                 </p>
               </div>
             </div>
@@ -84,29 +78,10 @@ export function AudioSettings({ onClose }: AudioSettingsProps) {
             </Button>
           </div>
 
-          {/* Auto-play Toggle */}
-          {settings.enabled && (
-            <div className="flex items-center justify-between p-4 border rounded-lg">
-              <div>
-                <p className="font-semibold">Auto-play Narration</p>
-                <p className="text-sm text-muted-foreground">
-                  Automatically play audio for new scenes
-                </p>
-              </div>
-              <Button
-                onClick={handleToggleAutoPlay}
-                variant={settings.autoPlay ? 'default' : 'outline'}
-                size="sm"
-              >
-                {settings.autoPlay ? 'On' : 'Off'}
-              </Button>
-            </div>
-          )}
-
           {/* Voice Selection */}
           {settings.enabled && (
             <div className="space-y-3">
-              <h3 className="font-semibold">Select Voice</h3>
+              <h3 className="font-semibold">Select Your Narrator Voice</h3>
               <div className="grid gap-3">
                 {voices.map((voice) => (
                   <div
@@ -152,8 +127,8 @@ export function AudioSettings({ onClose }: AudioSettingsProps) {
           {/* Info */}
           <div className="p-4 bg-muted/50 rounded-lg">
             <p className="text-sm text-muted-foreground">
-              Voice narration is powered by Pollinations AI. Audio will play automatically
-              for intro scenes, challenges, and resolutions when enabled.
+              Voice narration is powered by Pollinations AI. Press the play button (▶) on any scene
+              to hear it narrated in your selected voice.
             </p>
           </div>
         </CardContent>

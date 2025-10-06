@@ -15,13 +15,13 @@ export function BottomActionSheet({ open, onClose, title, children }: BottomActi
     <AnimatePresence>
       {open && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop - reduced blur so content above is still visible */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/40 z-40"
           />
 
           {/* Sheet */}
@@ -30,7 +30,7 @@ export function BottomActionSheet({ open, onClose, title, children }: BottomActi
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-background rounded-t-2xl border-t-2 border-primary/50 shadow-2xl max-h-[85vh] overflow-hidden flex flex-col"
+            className="fixed bottom-0 left-0 right-0 z-50 bg-background rounded-t-2xl border-t-2 border-primary/50 shadow-2xl max-h-[70vh] overflow-hidden flex flex-col"
           >
             {/* Handle bar */}
             <div className="flex items-center justify-center pt-3 pb-2">
@@ -56,7 +56,7 @@ export function BottomActionSheet({ open, onClose, title, children }: BottomActi
 
             {/* Content */}
             <div className="overflow-y-auto flex-1 scrollbar-thin">
-              <div className="p-4">
+              <div className="p-4 pb-8 safe-area-bottom">
                 {children}
               </div>
             </div>

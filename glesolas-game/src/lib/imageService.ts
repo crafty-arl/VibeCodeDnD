@@ -59,6 +59,22 @@ function getStyleGuide(): string {
  * Session-based aesthetic persistence
  */
 const AESTHETIC_STORAGE_KEY = 'glesolas_aesthetic_seed';
+const IMAGES_ENABLED_KEY = 'glesolas_images_enabled';
+
+/**
+ * Check if images are enabled
+ */
+export function areImagesEnabled(): boolean {
+  const stored = localStorage.getItem(IMAGES_ENABLED_KEY);
+  return stored === null ? true : stored === 'true'; // Default to enabled
+}
+
+/**
+ * Toggle images on/off
+ */
+export function toggleImages(enabled: boolean): void {
+  localStorage.setItem(IMAGES_ENABLED_KEY, enabled.toString());
+}
 
 /**
  * Get or create a session aesthetic seed
@@ -99,25 +115,31 @@ export function generateSceneImageUrl(
     height = 768,
     seed,
     nologo = true,
-    enhance = true,
-    model = 'nano-banana', // Default to Nano Banana for contextual image generation
+    enhance = false, // Disable enhance to reduce complexity
+    model = 'flux', // Use flux instead of nanobanana for better compatibility
     previousPrompt,
   } = options;
 
   // Build contextual prompt with previous scene for continuity
   let fullPrompt = prompt;
   if (previousPrompt) {
-    fullPrompt = `Continue from previous scene: "${previousPrompt}". Now show: ${prompt}. Keep consistent style and characters.`;
+    // Shorten the previous context to reduce URL length
+    const shortPrevious = previousPrompt.slice(0, 80);
+    fullPrompt = `${shortPrevious}... ${prompt}`;
+  }
+
+  // Limit prompt length to avoid issues
+  if (fullPrompt.length > 500) {
+    fullPrompt = fullPrompt.slice(0, 500);
   }
 
   // Encode the prompt for URL
   const encodedPrompt = encodeURIComponent(fullPrompt);
 
-  // Build query parameters
+  // Build minimal query parameters to reduce complexity
   const params = new URLSearchParams();
   params.append('width', width.toString());
   params.append('height', height.toString());
-  params.append('model', model);
 
   if (seed !== undefined) {
     params.append('seed', seed.toString());
@@ -127,12 +149,9 @@ export function generateSceneImageUrl(
     params.append('nologo', 'true');
   }
 
-  if (enhance) {
-    params.append('enhance', 'true');
-  }
-
-  // Construct the Pollinations AI URL with Nano Banana model
-  return `https://pollinations.ai/p/${encodedPrompt}?${params.toString()}`;
+  // Construct the Pollinations AI URL
+  // Simplified format for better reliability
+  return `https://image.pollinations.ai/prompt/${encodedPrompt}?${params.toString()}`;
 }
 
 /**

@@ -11,6 +11,7 @@ import type {
 import { generateNarrative } from './aiService';
 import { StoryMemoryManager } from './storyMemory';
 import { NarratorManager } from './narratorManager';
+import { createSceneImagePrompt, generateSceneImageUrl, getSessionAestheticSeed } from './imageService';
 
 /**
  * Build a context-rich prompt for playground mode AI generation
@@ -280,19 +281,34 @@ Use events, atmosphere, or character moments to make the shift feel organic.`;
 }
 
 /**
- * Create a playground scene object
+ * Create a playground scene object with generated image
  */
 export function createPlaygroundScene(
   narrative: string,
   playerAction: string | undefined,
-  cards: LoreCard[]
+  cards: LoreCard[],
+  previousSceneNarrative?: string
 ): PlaygroundScene {
+  const sceneId = `scene_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+  // Generate image for this scene
+  const imagePrompt = createSceneImagePrompt('scene', narrative);
+  const sessionSeed = getSessionAestheticSeed();
+
+  const imageUrl = generateSceneImageUrl(imagePrompt, {
+    seed: sessionSeed + Date.now(), // Unique but consistent aesthetic
+    previousPrompt: previousSceneNarrative,
+  });
+
+  console.log('🖼️ Generated scene image:', imageUrl);
+
   return {
-    id: `scene_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    id: sceneId,
     narrative,
     playerAction,
     cardsUsed: cards.map(c => c.id),
     timestamp: Date.now(),
+    imageUrl,
   };
 }
 

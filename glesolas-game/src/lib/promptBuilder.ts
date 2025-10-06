@@ -182,11 +182,22 @@ ${transitionContext ? `Recent events: "${transitionContext}"` : ''}
 **Player's Cards:**
 ${cardStats}
 
-**Requirements:**
-1. Challenge emerges naturally from the story
-2. Reference the player's cards/situation when relevant
-3. Set stat requirements (might_req, fortune_req, cunning_req) between 3-10
-4. Make requirements varied - not all equal
+**CRITICAL Requirements:**
+1. Challenge must be exactly 1-2 sentences (under 300 characters total)
+2. Set stat requirements as INTEGER NUMBERS between 3-10
+   - might_req: number between 3-10 (NOT a string)
+   - fortune_req: number between 3-10 (NOT a string)
+   - cunning_req: number between 3-10 (NOT a string)
+3. Make requirements varied - not all equal
+4. Challenge emerges naturally from the story and cards
+
+Example output format:
+{
+  "challenge": "A dragon blocks your path, demanding tribute.",
+  "might_req": 7,
+  "fortune_req": 4,
+  "cunning_req": 5
+}
 5. Describe what the player FACES, not what "happens" in general
 
 Write the challenge as if speaking to the player at the table. Describe what confronts THEM.`;
@@ -230,5 +241,13 @@ Create a brief transition (1-2 sentences) describing what YOUR player experience
 - YOUR new cards: ${newCards.map(c => c.name).join(', ')}
 - Next challenge: "${newChallenge}"
 
-Tell the player what THEY experience as the story continues. Use second-person: "You move forward...", "Your next challenge...", "You find yourself...". Bridge the action for THEM.`;
+Tell the player what THEY experience as the story continues. Use second-person: "You move forward...", "Your next challenge...", "You find yourself...". Bridge the action for THEM.
+
+**IMPORTANT: Respond with ONLY valid JSON in this exact format:**
+{
+  "transition": "Your 1-2 sentence transition text here",
+  "momentum": "rising" or "steady" or "falling"
+}
+
+Do not include any other text, explanations, or markdown. Only the JSON object.`;
 }

@@ -38,6 +38,7 @@ export interface PlaygroundScene {
   playerAction?: string;
   cardsUsed: string[];
   timestamp: number;
+  imageUrl?: string; // Generated scene illustration
 }
 
 export interface PlaygroundStory {

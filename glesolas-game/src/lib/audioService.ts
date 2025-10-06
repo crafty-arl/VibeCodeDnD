@@ -8,18 +8,14 @@ export type VoiceType = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
 const POLLINATIONS_TTS_URL = 'https://text.pollinations.ai';
 
 interface AudioSettings {
-  enabled: boolean;
   voice: VoiceType;
-  autoPlay: boolean;
 }
 
 const AUDIO_SETTINGS_KEY = 'glesolas_audio_settings';
 
-// Default settings
+// Default settings - audio is always enabled, users control via play buttons
 const DEFAULT_AUDIO_SETTINGS: AudioSettings = {
-  enabled: true,
   voice: 'nova',
-  autoPlay: true,
 };
 
 /**
@@ -62,51 +58,37 @@ export function generateAudioUrl(text: string, voice?: VoiceType): string {
 }
 
 /**
- * Play audio narration for text
+ * Play audio narration for text (manual playback on button press)
+ * Audio is always enabled - users control playback via play buttons
  * @param text - The text to narrate
  * @param voice - Optional voice override
- * @returns Audio element (null if audio disabled)
+ * @returns Audio element
  */
-export function playNarration(text: string, voice?: VoiceType): HTMLAudioElement | null {
-  const settings = getAudioSettings();
-
-  // Check if audio is enabled
-  if (!settings.enabled) {
-    return null;
-  }
-
+export function playNarration(text: string, voice?: VoiceType): HTMLAudioElement {
   // Generate audio URL
   const audioUrl = generateAudioUrl(text, voice);
 
   // Create and play audio element
   const audio = new Audio(audioUrl);
 
-  if (settings.autoPlay) {
-    audio.play().catch(err => {
-      console.warn('Audio autoplay failed (user interaction may be required):', err);
-    });
-  }
+  // Always play immediately when called (user pressed button)
+  audio.play().catch(err => {
+    console.warn('Audio playback failed:', err);
+  });
 
   return audio;
 }
 
 /**
- * Preload and play audio narration with loading promise
- * @param text - The text to narrate
+ * Create audio element with loading promise (for preloading)
+ * @param text - The text to create audio for
  * @param voice - Optional voice override
- * @returns Promise that resolves when audio is ready to play (or null if disabled)
+ * @returns Promise that resolves with audio element when ready
  */
-export async function preloadAndPlayNarration(
+export async function createAudioElement(
   text: string,
   voice?: VoiceType
-): Promise<HTMLAudioElement | null> {
-  const settings = getAudioSettings();
-
-  // Check if audio is enabled
-  if (!settings.enabled) {
-    return null;
-  }
-
+): Promise<HTMLAudioElement> {
   // Generate audio URL
   const audioUrl = generateAudioUrl(text, voice);
 
@@ -117,23 +99,16 @@ export async function preloadAndPlayNarration(
   await new Promise<void>((resolve) => {
     audio.addEventListener('canplaythrough', () => resolve(), { once: true });
     audio.addEventListener('error', () => {
-      console.warn('Audio loading failed, continuing without audio');
+      console.warn('Audio loading failed');
       resolve(); // Resolve anyway so UI isn't blocked
     }, { once: true });
 
     // Timeout after 5 seconds
     setTimeout(() => {
-      console.warn('Audio loading timeout, continuing without audio');
+      console.warn('Audio loading timeout');
       resolve();
     }, 5000);
   });
-
-  // Play if autoplay is enabled
-  if (settings.autoPlay) {
-    audio.play().catch(err => {
-      console.warn('Audio autoplay failed (user interaction may be required):', err);
-    });
-  }
 
   return audio;
 }
@@ -144,9 +119,6 @@ export async function preloadAndPlayNarration(
  * @param voice - Optional voice override
  */
 export function preloadAudio(text: string, voice?: VoiceType): void {
-  const settings = getAudioSettings();
-  if (!settings.enabled) return;
-
   const audioUrl = generateAudioUrl(text, voice);
   const audio = new Audio();
   audio.preload = 'auto';
