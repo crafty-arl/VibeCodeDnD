@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Scroll, Sparkles, Trophy } from 'lucide-react';
-import type { LoreCard, GamePhase, SkillCheck, RollResult } from './types/game';
+import type { LoreCard, GamePhase, SkillCheck, RollResult, ActionPath } from './types/game';
 import { drawRandomCards } from './data/cards';
-import { generateIntroScene, getRandomChallenge } from './data/scenes';
-import { determineSkillCheckResult, calculateTotalStats } from './lib/gameEngine';
+import { generateIntroSceneAsync, getRandomChallenge, generateResolutionSceneAsync, generateActionNarrativeAsync } from './data/scenes';
+import { calculateTotalStats } from './lib/gameEngine';
 import { LoreCardComponent } from './components/LoreCardComponent';
 import { StatsDisplay } from './components/StatsDisplay';
 import { Button } from './components/ui/button';
@@ -18,9 +18,11 @@ function App() {
   const [selectedCards, setSelectedCards] = useState<LoreCard[]>([]);
   const [introScene, setIntroScene] = useState<string>('');
   const [currentChallenge, setCurrentChallenge] = useState<SkillCheck | null>(null);
+  const [availableActions, setAvailableActions] = useState<ActionPath[]>([]);
   const [lastResult, setLastResult] = useState<RollResult | null>(null);
   const [glory, setGlory] = useState(0);
   const [narrativeDice, setNarrativeDice] = useState(100);
+  const [isGeneratingNarrative, setIsGeneratingNarrative] = useState(false);
 
   useEffect(() => {
     // Load session from localStorage
@@ -36,12 +38,17 @@ function App() {
     localStorage.setItem('glesolas_dice', String(narrativeDice));
   }, [glory, narrativeDice]);
 
-  const handleRollInitiative = () => {
+  const handleRollInitiative = async () => {
+    setIsGeneratingNarrative(true);
     const cards = drawRandomCards(3);
     setActiveCards(cards);
-    const scene = generateIntroScene(cards);
+
+    // Generate intro scene (AI or template fallback)
+    const scene = await generateIntroSceneAsync(cards);
     setIntroScene(scene);
+
     setNarrativeDice(prev => Math.max(0, prev - 1));
+    setIsGeneratingNarrative(false);
     setPhase('intro');
   };
 
@@ -62,13 +69,107 @@ function App() {
     });
   };
 
-  const handlePlayResponse = () => {
+  const handlePlayResponse = async () => {
     if (!currentChallenge || selectedCards.length !== 3) return;
 
-    const result = determineSkillCheckResult(selectedCards, currentChallenge);
-    setLastResult(result);
-    setGlory(prev => prev + result.gloryGained);
-    setNarrativeDice(prev => prev + result.narrativeDice);
+    setIsGeneratingNarrative(true);
+
+    // Calculate stats to determine which paths are unlocked
+    const total = calculateTotalStats(selectedCards);
+    const { might_req, fortune_req, cunning_req } = currentChallenge.requirements;
+
+    const mightUnlocked = total.might >= might_req;
+    const fortuneUnlocked = total.fortune >= fortune_req;
+    const cunningUnlocked = total.cunning >= cunning_req;
+
+    // Generate action narratives for each unlocked path
+    const actions: ActionPath[] = [];
+
+    if (mightUnlocked) {
+      const narrative = await generateActionNarrativeAsync(
+        selectedCards,
+        'might',
+        currentChallenge.scene,
+        introScene
+      );
+      actions.push({ path: 'might', narrative, unlocked: true });
+    } else {
+      actions.push({
+        path: 'might',
+        narrative: `Requires ${might_req} Might (you have ${total.might})`,
+        unlocked: false
+      });
+    }
+
+    if (fortuneUnlocked) {
+      const narrative = await generateActionNarrativeAsync(
+        selectedCards,
+        'fortune',
+        currentChallenge.scene,
+        introScene
+      );
+      actions.push({ path: 'fortune', narrative, unlocked: true });
+    } else {
+      actions.push({
+        path: 'fortune',
+        narrative: `Requires ${fortune_req} Fortune (you have ${total.fortune})`,
+        unlocked: false
+      });
+    }
+
+    if (cunningUnlocked) {
+      const narrative = await generateActionNarrativeAsync(
+        selectedCards,
+        'cunning',
+        currentChallenge.scene,
+        introScene
+      );
+      actions.push({ path: 'cunning', narrative, unlocked: true });
+    } else {
+      actions.push({
+        path: 'cunning',
+        narrative: `Requires ${cunning_req} Cunning (you have ${total.cunning})`,
+        unlocked: false
+      });
+    }
+
+    setAvailableActions(actions);
+    setIsGeneratingNarrative(false);
+    setPhase('action-choice');
+  };
+
+  const handleActionChoice = async (chosenPath: 'might' | 'fortune' | 'cunning') => {
+    if (!currentChallenge) return;
+
+    setIsGeneratingNarrative(true);
+
+    // Calculate rewards based on chosen path
+    const gloryGained = chosenPath === 'might' ? 50 : chosenPath === 'fortune' ? 40 : 60;
+    const narrativeDiceGained = 2;
+
+    // Generate resolution scene based on chosen path (always success since path was unlocked)
+    const scene = await generateResolutionSceneAsync(
+      selectedCards,
+      chosenPath,
+      true, // success = true (they unlocked this path)
+      currentChallenge.scene,
+      introScene
+    );
+
+    const total = calculateTotalStats(selectedCards);
+
+    setLastResult({
+      path: chosenPath,
+      success: true,
+      total,
+      scene,
+      gloryGained,
+      narrativeDice: narrativeDiceGained,
+    });
+
+    setGlory(prev => prev + gloryGained);
+    setNarrativeDice(prev => prev + narrativeDiceGained);
+    setIsGeneratingNarrative(false);
     setPhase('resolution');
   };
 
@@ -87,6 +188,7 @@ function App() {
     setSelectedCards([]);
     setIntroScene('');
     setCurrentChallenge(null);
+    setAvailableActions([]);
     setLastResult(null);
   };
 
@@ -144,11 +246,11 @@ function App() {
                   </p>
                   <Button
                     onClick={handleRollInitiative}
-                    disabled={narrativeDice < 1}
+                    disabled={narrativeDice < 1 || isGeneratingNarrative}
                     size="lg"
                     className="w-full md:w-auto"
                   >
-                    Roll Initiative
+                    {isGeneratingNarrative ? 'Weaving your tale...' : 'Roll Initiative'}
                   </Button>
                   {narrativeDice < 1 && (
                     <p className="text-sm text-destructive">Not enough Narrative Dice!</p>
@@ -168,17 +270,25 @@ function App() {
             >
               <Card className="border-accent/50">
                 <CardHeader>
-                  <CardTitle>The Story Begins...</CardTitle>
+                  <CardTitle>
+                    {isGeneratingNarrative ? '✨ AI Weaving Your Tale...' : 'The Story Begins...'}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.3 }}
-                    className="text-lg leading-relaxed"
-                  >
-                    {introScene}
-                  </motion.p>
+                  {isGeneratingNarrative ? (
+                    <div className="flex items-center justify-center p-8">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    </div>
+                  ) : (
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                      className="text-lg leading-relaxed"
+                    >
+                      {introScene}
+                    </motion.p>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {activeCards.map(card => (
                       <LoreCardComponent key={card.id} card={card} disabled />
@@ -234,12 +344,89 @@ function App() {
                   </div>
                   <Button
                     onClick={handlePlayResponse}
-                    disabled={selectedCards.length !== 3}
+                    disabled={selectedCards.length !== 3 || isGeneratingNarrative}
                     className="w-full"
                     size="lg"
                   >
-                    Resolve
+                    {isGeneratingNarrative ? 'Generating Actions...' : 'Play Cards'}
                   </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {phase === 'action-choice' && availableActions.length > 0 && (
+            <motion.div
+              key="action-choice"
+              initial={{ opacity: 0, x: 100 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -100 }}
+              className="space-y-6"
+            >
+              <Card className="border-accent/50">
+                <CardHeader>
+                  <CardTitle>
+                    {isGeneratingNarrative ? '✨ Weaving Your Stories...' : 'Choose Your Path'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {isGeneratingNarrative ? (
+                    <div className="flex items-center justify-center p-8">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        You've played your cards. Now choose how to use them:
+                      </p>
+                      <div className="space-y-3">
+                        {availableActions.map(action => (
+                          <motion.div
+                            key={action.path}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.1 }}
+                          >
+                            <Button
+                              onClick={() => handleActionChoice(action.path)}
+                              disabled={!action.unlocked}
+                              className="w-full h-auto p-4 text-left justify-start whitespace-normal"
+                              variant={action.unlocked ? 'default' : 'outline'}
+                              size="lg"
+                            >
+                              <div className="space-y-1 w-full">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-bold capitalize text-base">
+                                    {action.path}
+                                  </span>
+                                  {!action.unlocked && (
+                                    <span className="text-xs text-destructive whitespace-nowrap">🔒 Locked</span>
+                                  )}
+                                </div>
+                                <p className={`text-sm whitespace-normal ${action.unlocked ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                  {action.narrative}
+                                </p>
+                              </div>
+                            </Button>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Show selected cards */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Cards Played</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {selectedCards.map(card => (
+                      <LoreCardComponent key={card.id} card={card} disabled />
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -256,11 +443,21 @@ function App() {
               <Card className={lastResult.success ? 'border-accent' : 'border-destructive'}>
                 <CardHeader>
                   <CardTitle>
-                    {lastResult.success ? '✓ Success!' : '✗ Fumble...'}
+                    {isGeneratingNarrative
+                      ? '✨ AI Resolving Your Actions...'
+                      : lastResult.success
+                      ? '✓ Success!'
+                      : '✗ Fumble...'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-lg leading-relaxed">{lastResult.scene}</p>
+                  {isGeneratingNarrative ? (
+                    <div className="flex items-center justify-center p-8">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    </div>
+                  ) : (
+                    <p className="text-lg leading-relaxed">{lastResult.scene}</p>
+                  )}
                   <div className="grid grid-cols-2 gap-4 p-4 bg-secondary rounded-lg">
                     <div>
                       <p className="text-xs text-muted-foreground">Path</p>

@@ -1,17 +1,4 @@
-Perfect — let’s do this properly.
 
-Below is your **complete end-to-end MVP plan** for **Glesolas**, written as a full design + build document you can hand to developers, designers, or investors.
-
-It covers:
-
-* Vision → Gameplay Loop
-* Game Mechanics (Power, Luck, Wit)
-* AI Design (OpenRouter + Alibaba Qwen)
-* Architecture (Cloudflare + Frontend)
-* Data Models + API Specs
-* Build Phases + Deliverables
-
----
 
 # 🌌 **GLESOLAS — MVP TECHNICAL & DESIGN PLAN**
 
@@ -20,7 +7,7 @@ It covers:
 ## 🪶 1. Vision
 
 **Glesolas** is an AI-powered storytelling card game.
-Players combine cards representing **Characters, Items, and Locations** to create a story.
+Players combine cards representing **Characters, Items, Locations and Lore** to create a story.
 
 Each session begins with an **intro scene**, evolves through **AI-generated challenges**, and invites the player to respond with a new combination of cards using **Power, Luck, or Wit**.
 
@@ -32,7 +19,7 @@ Success in challenges earns **XP** and **Story Beats** (AI credits), allowing th
 
 | Phase              | Player Action                                                     | AI Response                                     | Outcome        |
 | ------------------ | ----------------------------------------------------------------- | ----------------------------------------------- | -------------- |
-| **1. Forge Start** | Draw 3 cards to start the story                                   | AI writes base scene                            | Story begins   |
+| **1. Forge Start** | Place 3 cards to start the story                                   | AI writes base scene                            | Story begins   |
 | **2. Challenge**   | AI creates a challenge with 3 skill thresholds (Power, Luck, Wit) | Player prepares response                        | Stakes set     |
 | **3. Response**    | Player plays 3 new cards                                          | AI narrates success/failure based on attributes | Scene resolved |
 | **4. Reward**      | Player gains XP and Story Beats                                   | Session continues                               | Progression    |

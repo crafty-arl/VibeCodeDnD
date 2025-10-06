@@ -1,4 +1,11 @@
 import type { SkillCheck, LoreCard, SkillPath } from '@/types/game';
+import { generateNarrative, generateStructured, isAIAvailable } from '@/lib/aiService';
+import { buildIntroPrompt, buildResolutionPrompt, buildActionNarrativePrompt } from '@/lib/promptBuilder';
+import {
+  introSceneSchema,
+  actionNarrativeSchema,
+  resolutionSceneSchema,
+} from '@/lib/schemas/narrativeSchemas';
 
 // TPG-themed intro scenes (Mad-libs style)
 export const INTRO_TEMPLATES = [
@@ -98,6 +105,10 @@ export const RESOLUTION_TEMPLATES = {
   },
 };
 
+/**
+ * Generate intro scene (template fallback for sync usage)
+ * @deprecated Use generateIntroSceneAsync for AI-powered narratives
+ */
 export function generateIntroScene(cards: LoreCard[]): string {
   const [character, item, location] = cards;
   const template = INTRO_TEMPLATES[Math.floor(Math.random() * INTRO_TEMPLATES.length)];
@@ -108,12 +119,140 @@ export function generateIntroScene(cards: LoreCard[]): string {
     .replace('{location}', location.name);
 }
 
+/**
+ * Generate intro scene with AI (async)
+ * Uses structured output with Zod validation, falls back to template on failure
+ */
+export async function generateIntroSceneAsync(
+  cards: LoreCard[],
+  useAI: boolean = true
+): Promise<string> {
+  // Attempt structured AI generation if enabled and available
+  if (useAI && isAIAvailable()) {
+    const prompt = buildIntroPrompt(cards);
+
+    // Try structured output first (with Zod validation)
+    const structuredResult = await generateStructured(prompt, introSceneSchema, {
+      maxTokens: 150,
+      temperature: 0.9, // High creativity for intro scenes
+    });
+
+    if (structuredResult) {
+      return structuredResult.scene;
+    }
+
+    // Fallback to unstructured if structured fails (legacy compatibility)
+    const aiScene = await generateNarrative(prompt, {
+      maxTokens: 150,
+      temperature: 0.9,
+    });
+
+    if (aiScene) {
+      return aiScene;
+    }
+  }
+
+  // Final fallback to template-based generation
+  return generateIntroScene(cards);
+}
+
 export function getRandomChallenge(): SkillCheck {
   return CHALLENGES[Math.floor(Math.random() * CHALLENGES.length)];
 }
 
+/**
+ * Generate resolution scene (template fallback for sync usage)
+ * @deprecated Use generateResolutionSceneAsync for AI-powered narratives
+ */
 export function generateResolutionScene(path: SkillPath, success: boolean): string {
   const templates = RESOLUTION_TEMPLATES[path];
   const pool = success ? templates.success : templates.fumble;
   return pool[Math.floor(Math.random() * pool.length)];
+}
+
+/**
+ * Generate resolution scene with AI (async)
+ * Uses structured output with Zod validation, falls back to template on failure
+ */
+export async function generateResolutionSceneAsync(
+  cards: LoreCard[],
+  path: SkillPath,
+  success: boolean,
+  challenge?: string,
+  introScene?: string,
+  useAI: boolean = true
+): Promise<string> {
+  // Attempt structured AI generation if enabled and available
+  if (useAI && isAIAvailable()) {
+    const prompt = buildResolutionPrompt(cards, path, success, challenge, introScene);
+
+    // Try structured output first (with Zod validation)
+    const structuredResult = await generateStructured(prompt, resolutionSceneSchema, {
+      maxTokens: 250,
+      temperature: 0.85, // High creativity for resolutions
+    });
+
+    if (structuredResult) {
+      return structuredResult.resolution;
+    }
+
+    // Fallback to unstructured if structured fails (legacy compatibility)
+    const aiScene = await generateNarrative(prompt, {
+      maxTokens: 250,
+      temperature: 0.85,
+    });
+
+    if (aiScene) {
+      return aiScene;
+    }
+  }
+
+  // Final fallback to template-based generation
+  return generateResolutionScene(path, success);
+}
+
+/**
+ * Generate action narrative showing how cards would be used via specific path
+ * Uses structured output with Zod validation, falls back to template on failure
+ */
+export async function generateActionNarrativeAsync(
+  cards: LoreCard[],
+  path: SkillPath,
+  challenge: string,
+  introScene?: string,
+  useAI: boolean = true
+): Promise<string> {
+  // Attempt structured AI generation if enabled and available
+  if (useAI && isAIAvailable()) {
+    const prompt = buildActionNarrativePrompt(cards, path, challenge, introScene);
+
+    // Try structured output first (with Zod validation)
+    const structuredResult = await generateStructured(prompt, actionNarrativeSchema, {
+      maxTokens: 200,
+      temperature: 0.88, // High creativity for action previews
+    });
+
+    if (structuredResult) {
+      return structuredResult.narrative;
+    }
+
+    // Fallback to unstructured if structured fails (legacy compatibility)
+    const aiScene = await generateNarrative(prompt, {
+      maxTokens: 200,
+      temperature: 0.88,
+    });
+
+    if (aiScene) {
+      return aiScene;
+    }
+  }
+
+  // Final fallback to simple template
+  const pathVerbs = {
+    might: 'use brute force',
+    fortune: 'take a gamble',
+    cunning: 'outsmart the situation',
+  };
+
+  return `You could ${pathVerbs[path]} using ${cards.map(c => c.name).join(', ')}.`;
 }
