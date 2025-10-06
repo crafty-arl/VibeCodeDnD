@@ -301,6 +301,10 @@ export async function generateChallengeAsync(
     scaledRequirements = getScaledChallengeRequirements(playerProfile);
   }
 
+  // Select random key stat for this turn
+  const keyStats: SkillPath[] = ['might', 'fortune', 'cunning'];
+  const keyStat = keyStats[Math.floor(Math.random() * keyStats.length)];
+
   // Attempt structured AI generation if enabled and available
   if (useAI && isAIAvailable()) {
     const prompt = buildChallengePrompt(cards, introScene, transitionContext);
@@ -315,6 +319,7 @@ export async function generateChallengeAsync(
       return {
         scene: structuredResult.challenge,
         requirements: scaledRequirements, // Use scaled requirements instead of AI-generated ones
+        keyStat,
       };
     }
   }
@@ -323,6 +328,7 @@ export async function generateChallengeAsync(
   const fallbackChallenge = getRandomChallenge();
   return {
     ...fallbackChallenge,
-    requirements: scaledRequirements
+    requirements: scaledRequirements,
+    keyStat,
   };
 }

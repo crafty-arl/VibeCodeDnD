@@ -227,17 +227,46 @@ function App() {
     const fortuneUnlocked = total.fortune >= fortune_req;
     const cunningUnlocked = total.cunning >= cunning_req;
 
-    // Generate all unlocked action narratives in parallel for speed
+    console.log('🎲 Challenge Requirements:', { might_req, fortune_req, cunning_req });
+    console.log('💪 Your Stats:', total);
+    console.log('🔓 Unlocked Paths:', { mightUnlocked, fortuneUnlocked, cunningUnlocked });
+
+    const unlockedCount = [mightUnlocked, fortuneUnlocked, cunningUnlocked].filter(Boolean).length;
+
+    // TOTAL FAILURE: Didn't meet ANY requirements - must choose which bad thing happens
+    if (unlockedCount === 0) {
+      console.log('💀 TOTAL FAILURE - No paths unlocked! Choose your doom...');
+
+      const failureNarratives = await Promise.all([
+        generateActionNarrativeAsync(selectedCards, 'might', currentChallenge.scene, introScene),
+        generateActionNarrativeAsync(selectedCards, 'fortune', currentChallenge.scene, introScene),
+        generateActionNarrativeAsync(selectedCards, 'cunning', currentChallenge.scene, introScene),
+      ]);
+
+      const actions: ActionPath[] = [
+        { path: 'might', narrative: `💀 ${failureNarratives[0]} (But it goes badly...)`, unlocked: false },
+        { path: 'fortune', narrative: `💀 ${failureNarratives[1]} (But it goes badly...)`, unlocked: false },
+        { path: 'cunning', narrative: `💀 ${failureNarratives[2]} (But it goes badly...)`, unlocked: false },
+      ];
+
+      setNarrativeDice(prev => Math.max(0, prev - 3)); // Used 3 dice for failure scenarios
+      setAvailableActions(actions);
+      setIsGeneratingNarrative(false);
+      setPhase('action-choice');
+      return;
+    }
+
+    // NORMAL: At least one path unlocked
     const [mightNarrative, fortuneNarrative, cunningNarrative] = await Promise.all([
       mightUnlocked
         ? generateActionNarrativeAsync(selectedCards, 'might', currentChallenge.scene, introScene)
-        : Promise.resolve(`Requires ${might_req} Might (you have ${total.might})`),
+        : Promise.resolve(`🔒 Locked: Requires ${might_req} Might (you have ${total.might})`),
       fortuneUnlocked
         ? generateActionNarrativeAsync(selectedCards, 'fortune', currentChallenge.scene, introScene)
-        : Promise.resolve(`Requires ${fortune_req} Fortune (you have ${total.fortune})`),
+        : Promise.resolve(`🔒 Locked: Requires ${fortune_req} Fortune (you have ${total.fortune})`),
       cunningUnlocked
         ? generateActionNarrativeAsync(selectedCards, 'cunning', currentChallenge.scene, introScene)
-        : Promise.resolve(`Requires ${cunning_req} Cunning (you have ${total.cunning})`),
+        : Promise.resolve(`🔒 Locked: Requires ${cunning_req} Cunning (you have ${total.cunning})`),
     ]);
 
     const actions: ActionPath[] = [
@@ -245,6 +274,12 @@ function App() {
       { path: 'fortune', narrative: fortuneNarrative, unlocked: fortuneUnlocked },
       { path: 'cunning', narrative: cunningNarrative, unlocked: cunningUnlocked },
     ];
+
+    // Deduct narrative dice ONLY for unlocked paths that generated AI content
+    if (unlockedCount > 0) {
+      setNarrativeDice(prev => Math.max(0, prev - unlockedCount));
+      console.log(`🎲 Used ${unlockedCount} narrative dice for unlocked paths`);
+    }
 
     setAvailableActions(actions);
     setIsGeneratingNarrative(false);
@@ -254,17 +289,68 @@ function App() {
   const handleActionChoice = async (chosenPath: 'might' | 'fortune' | 'cunning') => {
     if (!currentChallenge) return;
 
+    // Check if this path was unlocked
+    const chosenAction = availableActions.find(a => a.path === chosenPath);
+    const isUnlocked = chosenAction?.unlocked ?? false;
+
+    // Check if ALL paths were locked (total failure scenario)
+    const totalFailure = availableActions.every(a => !a.unlocked);
+
     setIsGeneratingNarrative(true);
 
-    // Calculate rewards based on chosen path
-    const gloryGained = chosenPath === 'might' ? 50 : chosenPath === 'fortune' ? 40 : 60;
-    const narrativeDiceGained = 2;
+    // Calculate rewards/penalties based on whether path was unlocked
+    let success: boolean;
+    let gloryGained: number;
+    let narrativeDiceGained: number;
 
-    // Generate resolution scene based on chosen path (always success since path was unlocked)
+    // Check if chosen path is the key stat
+    const isKeyStat = currentChallenge.keyStat === chosenPath;
+
+    if (totalFailure) {
+      // TOTAL FAILURE: All paths locked - choose your doom
+      success = false;
+      gloryGained = -50; // Bigger penalty for total failure
+      narrativeDiceGained = 0;
+      console.log(`💀💀💀 TOTAL FAILURE - Choose lesser of evils. Lose glory: ${gloryGained}`);
+    } else if (isUnlocked) {
+      // Path was unlocked - guaranteed success!
+      success = true;
+
+      // KEY STAT SYSTEM: Full rewards if using the key stat, reduced if not
+      if (isKeyStat) {
+        // Using the key stat = full rewards
+        gloryGained = chosenPath === 'might' ? 50 : chosenPath === 'fortune' ? 40 : 60;
+        narrativeDiceGained = 2;
+        console.log(`✨🔑 KEY STAT used! Full glory: +${gloryGained}`);
+      } else {
+        // Using non-key stat = reduced rewards (60% of normal)
+        const baseGlory = chosenPath === 'might' ? 50 : chosenPath === 'fortune' ? 40 : 60;
+        gloryGained = Math.floor(baseGlory * 0.6);
+        narrativeDiceGained = 1;
+        console.log(`⚠️ Non-key stat used. Reduced glory: +${gloryGained} (key was ${currentChallenge.keyStat})`);
+      }
+    } else {
+      // Risky! Path was locked but others were unlocked - 50% chance of success
+      success = Math.random() >= 0.5;
+
+      if (success) {
+        // DM lets you pass - reduced rewards
+        gloryGained = chosenPath === 'might' ? 25 : chosenPath === 'fortune' ? 20 : 30;
+        narrativeDiceGained = 1;
+        console.log(`🎲 Locked path - DM mercy! Success with reduced glory: +${gloryGained}`);
+      } else {
+        // Failed the risky choice - lose glory!
+        gloryGained = -30;
+        narrativeDiceGained = 0;
+        console.log(`💀 Locked path - FAILED! Lose glory: ${gloryGained}`);
+      }
+    }
+
+    // Generate resolution scene based on chosen path and success
     const scene = await generateResolutionSceneAsync(
       selectedCards,
       chosenPath,
-      true, // success = true (they unlocked this path)
+      success,
       currentChallenge.scene,
       introScene
     );
@@ -273,26 +359,28 @@ function App() {
 
     setLastResult({
       path: chosenPath,
-      success: true,
+      success,
       total,
       scene,
       gloryGained,
       narrativeDice: narrativeDiceGained,
     });
 
-    setGlory(prev => prev + gloryGained);
+    setGlory(prev => Math.max(0, prev + gloryGained)); // Can't go below 0
     setNarrativeDice(prev => prev + narrativeDiceGained);
 
     // Award XP and update player stats
-    updateEncounterStats(playerProfile, true, chosenPath, gloryGained, selectedCards.length);
-    const levelUp = awardXP(playerProfile, gloryGained);
-    savePlayerProfile(playerProfile);
-    setPlayerProfile({ ...playerProfile });
+    updateEncounterStats(playerProfile, success, chosenPath, gloryGained, selectedCards.length);
+    if (success && gloryGained > 0) {
+      const levelUp = awardXP(playerProfile, gloryGained);
+      savePlayerProfile(playerProfile);
+      setPlayerProfile({ ...playerProfile });
 
-    // Show level-up modal if leveled up
-    if (levelUp) {
-      setLevelUpResult(levelUp);
-      setShowLevelUpModal(true);
+      // Show level-up modal if leveled up
+      if (levelUp) {
+        setLevelUpResult(levelUp);
+        setShowLevelUpModal(true);
+      }
     }
 
     setIsGeneratingNarrative(false);
@@ -956,10 +1044,12 @@ function App() {
                       <SceneNarrationButton text={currentChallenge.scene} className="w-full" />
 
                   <StatsDisplay
-                    might={calculateTotalStats(selectedCards).might}
-                    fortune={calculateTotalStats(selectedCards).fortune}
-                    cunning={calculateTotalStats(selectedCards).cunning}
+                    might={calculateTotalStats(selectedCards, playerProfile).might}
+                    fortune={calculateTotalStats(selectedCards, playerProfile).fortune}
+                    cunning={calculateTotalStats(selectedCards, playerProfile).cunning}
                     requirements={currentChallenge.requirements}
+                    keyStat={currentChallenge.keyStat}
+                    playerBonuses={playerProfile.bonusStats}
                   />
                 </CardContent>
               </Card>
@@ -1026,9 +1116,33 @@ function App() {
                     <LoadingNarrative type="action" />
                   ) : (
                     <>
-                      <p className="text-sm text-muted-foreground">
-                        You've played your cards. Now choose how to use them:
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {availableActions.every(a => !a.unlocked)
+                          ? '💀 Total failure! Choose which disaster happens...'
+                          : "You've played your cards. Now choose how to use them:"}
                       </p>
+
+                      {/* Show current stats vs requirements */}
+                      {currentChallenge && (
+                        <div className="mb-4 p-3 bg-secondary/30 rounded-lg border border-border/50">
+                          <p className="text-xs font-semibold mb-2 text-muted-foreground">Your Stats vs Challenge:</p>
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div className={`p-2 rounded ${calculateTotalStats(selectedCards, playerProfile).might >= currentChallenge.requirements.might_req ? 'bg-green-500/20 border border-green-500/50' : 'bg-destructive/20 border border-destructive/50'}`}>
+                              <div className="font-semibold">Might</div>
+                              <div className="font-mono">{calculateTotalStats(selectedCards, playerProfile).might} / {currentChallenge.requirements.might_req}</div>
+                            </div>
+                            <div className={`p-2 rounded ${calculateTotalStats(selectedCards, playerProfile).fortune >= currentChallenge.requirements.fortune_req ? 'bg-green-500/20 border border-green-500/50' : 'bg-destructive/20 border border-destructive/50'}`}>
+                              <div className="font-semibold">Fortune</div>
+                              <div className="font-mono">{calculateTotalStats(selectedCards, playerProfile).fortune} / {currentChallenge.requirements.fortune_req}</div>
+                            </div>
+                            <div className={`p-2 rounded ${calculateTotalStats(selectedCards, playerProfile).cunning >= currentChallenge.requirements.cunning_req ? 'bg-green-500/20 border border-green-500/50' : 'bg-destructive/20 border border-destructive/50'}`}>
+                              <div className="font-semibold">Cunning</div>
+                              <div className="font-mono">{calculateTotalStats(selectedCards, playerProfile).cunning} / {currentChallenge.requirements.cunning_req}</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="space-y-3">
                         {availableActions.map(action => (
                           <motion.div
@@ -1039,9 +1153,8 @@ function App() {
                           >
                             <Button
                               onClick={() => handleActionChoice(action.path)}
-                              disabled={!action.unlocked}
                               className="w-full h-auto p-4 text-left justify-start whitespace-normal"
-                              variant={action.unlocked ? 'default' : 'outline'}
+                              variant={action.unlocked ? 'default' : 'destructive'}
                               size="lg"
                             >
                               <div className="space-y-1 w-full">
@@ -1049,13 +1162,22 @@ function App() {
                                   <span className="font-bold capitalize text-base">
                                     {action.path}
                                   </span>
-                                  {!action.unlocked && (
-                                    <span className="text-xs text-destructive whitespace-nowrap">🔒 Locked</span>
+                                  {action.unlocked ? (
+                                    <span className="text-xs text-green-500 whitespace-nowrap">✓ Safe Choice</span>
+                                  ) : (
+                                    <span className="text-xs whitespace-nowrap">⚠️ Risky!</span>
                                   )}
                                 </div>
-                                <p className={`text-sm whitespace-normal ${action.unlocked ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                <p className={`text-sm whitespace-normal`}>
                                   {action.narrative}
                                 </p>
+                                {!action.unlocked && (
+                                  <p className="text-xs mt-2 opacity-90">
+                                    {availableActions.every(a => !a.unlocked)
+                                      ? '💀 Guaranteed failure: Lose 50 glory'
+                                      : '⚠️ 50% chance: Win half glory OR lose 30 glory'}
+                                  </p>
+                                )}
                               </div>
                             </Button>
                           </motion.div>
@@ -1097,10 +1219,9 @@ function App() {
                   <ActionSheetButton
                     key={action.path}
                     onClick={() => handleActionChoice(action.path)}
-                    disabled={!action.unlocked}
                     locked={!action.unlocked}
-                    title={action.path.toUpperCase()}
-                    description={action.narrative}
+                    title={action.unlocked ? action.path.toUpperCase() : `${action.path.toUpperCase()} ⚠️ RISKY`}
+                    description={action.unlocked ? action.narrative : `${action.narrative}\n\n⚠️ 50% chance: Win half glory OR lose 30 glory`}
                     icon={icons[action.path as keyof typeof icons]}
                   />
                 );

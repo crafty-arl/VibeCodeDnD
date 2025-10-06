@@ -27,6 +27,7 @@ export interface SkillCheck {
     fortune_req: number;
     cunning_req: number;
   };
+  keyStat?: SkillPath; // The stat that provides full rewards this turn
 }
 
 export interface RollResult {
