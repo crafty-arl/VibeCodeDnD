@@ -156,13 +156,16 @@ export async function generateStructured<T>(
 
       // Use simple JSON mode instead of LangChain's withStructuredOutput
       // This is more reliable with OpenRouter
+      const exampleShape = (schema as any)._def?.shape ?
+        Object.keys((schema as any)._def.shape()).reduce((acc: any, key: string) => {
+          acc[key] = '<your response here>';
+          return acc;
+        }, {}) : {};
+
       const jsonPrompt = `${prompt}
 
 IMPORTANT: Respond ONLY with valid JSON matching this exact structure. Do not include any other text.
-${JSON.stringify(schema._def.typeName === 'ZodObject' ? Object.keys((schema as any)._def.shape()).reduce((acc: any, key: string) => {
-  acc[key] = '<your response here>';
-  return acc;
-}, {}) : {})}`;
+${JSON.stringify(exampleShape)}`;
 
       const response = await client!.chat.completions.create({
         model: DEFAULT_MODEL,
