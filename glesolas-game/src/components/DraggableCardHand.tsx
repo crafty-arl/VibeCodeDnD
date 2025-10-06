@@ -77,15 +77,16 @@ export function DraggableCardHand({
                 return (
                   <motion.div
                     key={card.id}
-                    drag={!disabled && !isSelected}
-                    dragConstraints={{ top: 0, bottom: 0, left: 0, right: 0 }}
+                    drag={!disabled && !isSelected ? "y" : false}
+                    dragConstraints={{ top: -200, bottom: 50 }}
                     dragElastic={0.2}
+                    dragSnapToOrigin={true}
                     onDragStart={() => handleLongPressStart(card)}
                     onDragEnd={(e, info) => handleDragEnd(card, e, info)}
                     onPointerDown={() => handleLongPressStart(card)}
                     onPointerUp={handleLongPressEnd}
                     onPointerLeave={handleLongPressEnd}
-                    whileDrag={{ scale: 1.1, zIndex: 10, rotate: 5 }}
+                    whileDrag={{ scale: 1.1, zIndex: 10 }}
                     className={`cursor-grab active:cursor-grabbing ${isSelected ? 'opacity-50 pointer-events-none' : ''}`}
                   >
                     <LoreCardComponent
@@ -112,8 +113,9 @@ export function DraggableCardHand({
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
                     drag={!disabled && !isSelected ? "y" : false}
-                    dragConstraints={{ top: -100, bottom: 0 }}
+                    dragConstraints={{ top: -200, bottom: 50 }}
                     dragElastic={0.2}
+                    dragSnapToOrigin={true}
                     onDragStart={() => handleLongPressStart(card)}
                     onDragEnd={(e, info) => handleDragEnd(card, e, info)}
                     onTouchStart={() => handleLongPressStart(card)}

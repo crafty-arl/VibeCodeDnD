@@ -48,45 +48,23 @@ export function SceneImage({
       width,
       height,
       seed: Math.abs(narrativeSeed),
+      model: 'flux',
     });
-  }, [imagePrompt, width, height, narrative]);
+  }, [imagePrompt, narrative, width, height]);
 
   // Track loading state
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
-  const [currentImageUrl, setCurrentImageUrl] = useState(imageUrl);
 
   useEffect(() => {
     setIsLoading(true);
     setHasError(false);
-    setRetryCount(0);
-
-    // Add a small delay to avoid rapid-fire requests
-    const timeoutId = setTimeout(() => {
-      setCurrentImageUrl(imageUrl);
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
   }, [imageUrl]);
 
   const handleImageError = () => {
-    console.warn('🖼️ Image generation failed:', currentImageUrl);
-
-    // Retry up to 2 times with exponential backoff
-    if (retryCount < 2) {
-      const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s
-      console.log(`🔄 Retrying in ${delay}ms... (attempt ${retryCount + 1}/2)`);
-      setTimeout(() => {
-        setRetryCount(prev => prev + 1);
-        // Force image reload by adding timestamp
-        setCurrentImageUrl(`${imageUrl}&retry=${Date.now()}`);
-      }, delay);
-    } else {
-      console.error('❌ Image generation failed after retries. Likely rate limited by Pollinations AI.');
-      setIsLoading(false);
-      setHasError(true);
-    }
+    console.warn('🖼️ Image loading failed:', imageUrl);
+    setIsLoading(false);
+    setHasError(true);
   };
 
   // Don't render if images are disabled
@@ -100,9 +78,7 @@ export function SceneImage({
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary/20 to-background z-10">
           <div className="text-center space-y-3">
             <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
-            <p className="text-sm text-muted-foreground">
-              {retryCount > 0 ? `Retrying image generation... (${retryCount}/2)` : 'Generating scene illustration...'}
-            </p>
+            <p className="text-sm text-muted-foreground">Generating scene illustration...</p>
           </div>
         </div>
       )}
@@ -110,13 +86,12 @@ export function SceneImage({
       {hasError ? (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-destructive/10 to-background">
           <div className="text-center space-y-2 p-4">
-            <p className="text-sm text-muted-foreground">Image generation temporarily unavailable</p>
-            <p className="text-xs text-muted-foreground/70">Rate limit reached - continuing without images</p>
+            <p className="text-sm text-muted-foreground">Image failed to load</p>
           </div>
         </div>
       ) : (
         <img
-          src={currentImageUrl}
+          src={imageUrl}
           alt="Scene illustration"
           className={`w-full h-full object-cover transition-opacity duration-500 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
           onLoad={() => setIsLoading(false)}

@@ -122,8 +122,9 @@ export function CardHandDrawer({ hand, selectedCards, onCardSelect, disabled }: 
                     }}
                     transition={{ delay: index * 0.03 }}
                     drag={!disabled && !isSelected ? "y" : false}
-                    dragConstraints={{ top: -200, bottom: 0 }}
+                    dragConstraints={{ top: -200, bottom: 50 }}
                     dragElastic={0.3}
+                    dragSnapToOrigin={true}
                     onDragStart={() => handleLongPressStart(card)}
                     onDragEnd={(e, info) => handleDragEnd(card, e, info)}
                     onTouchStart={() => handleLongPressStart(card)}
@@ -131,7 +132,6 @@ export function CardHandDrawer({ hand, selectedCards, onCardSelect, disabled }: 
                     whileDrag={{
                       scale: 1.15,
                       zIndex: 50,
-                      rotate: 5,
                       cursor: 'grabbing'
                     }}
                     className={`flex-shrink-0 w-[140px] snap-center ${!isSelected && !disabled ? 'cursor-grab active:cursor-grabbing' : ''}`}

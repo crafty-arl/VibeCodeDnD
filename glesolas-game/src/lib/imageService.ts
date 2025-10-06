@@ -115,29 +115,17 @@ export function generateSceneImageUrl(
     height = 768,
     seed,
     nologo = true,
-    previousPrompt,
+    model = 'flux',
   } = options;
 
-  // Build contextual prompt with previous scene for continuity
-  let fullPrompt = prompt;
-  if (previousPrompt) {
-    // Shorten the previous context to reduce URL length
-    const shortPrevious = previousPrompt.slice(0, 80);
-    fullPrompt = `${shortPrevious}... ${prompt}`;
-  }
-
-  // Limit prompt length to avoid issues
-  if (fullPrompt.length > 500) {
-    fullPrompt = fullPrompt.slice(0, 500);
-  }
-
   // Encode the prompt for URL
-  const encodedPrompt = encodeURIComponent(fullPrompt);
+  const encodedPrompt = encodeURIComponent(prompt);
 
-  // Build minimal query parameters to reduce complexity
+  // Build query parameters
   const params = new URLSearchParams();
   params.append('width', width.toString());
   params.append('height', height.toString());
+  params.append('model', model);
 
   if (seed !== undefined) {
     params.append('seed', seed.toString());
@@ -147,9 +135,8 @@ export function generateSceneImageUrl(
     params.append('nologo', 'true');
   }
 
-  // Construct the Pollinations AI URL
-  // Simplified format for better reliability
-  return `https://image.pollinations.ai/prompt/${encodedPrompt}?${params.toString()}`;
+  // Correct Pollinations AI endpoint: https://pollinations.ai/p/{prompt}
+  return `https://pollinations.ai/p/${encodedPrompt}?${params.toString()}`;
 }
 
 /**
