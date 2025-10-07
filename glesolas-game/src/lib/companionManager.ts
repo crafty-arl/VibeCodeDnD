@@ -114,8 +114,6 @@ export class CompanionManager {
     winningPath: SkillPath,
     playerLevel: number
   ): Promise<LoreCard> {
-    const enemyName = this.extractEnemyName(challenge.scene);
-
     const baseStats: CardStats = {
       might: Math.floor(challenge.requirements.might_req * 0.4),
       fortune: Math.floor(challenge.requirements.fortune_req * 0.4),
@@ -125,16 +123,19 @@ export class CompanionManager {
     baseStats[winningPath] += 3;
 
     // Generate AI flavor text and dialogue based on the encounter
+    // The AI will extract the actual character name from the scene
     const { generateCompanionDialogue } = await import('./aiService');
     const companionData = await generateCompanionDialogue(
-      enemyName,
       challenge.scene,
       winningPath
     );
 
+    // Use AI-generated name or fallback
+    const characterName = companionData?.name || 'Reformed Warrior';
+
     // Generate companion card image (Pollinations first for speed)
     const { generateSceneImageUrl, createSceneImagePrompt } = await import('./imageService');
-    const imagePrompt = createSceneImagePrompt('character', `${enemyName} fantasy character portrait`, '');
+    const imagePrompt = createSceneImagePrompt('character', `${characterName} fantasy character portrait`, '');
 
     // Use Pollinations (fast and free)
     const artUrl = generateSceneImageUrl(imagePrompt, {
@@ -146,7 +147,7 @@ export class CompanionManager {
 
     return {
       id: `recruited_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      name: companionData?.name || `${enemyName} (Reformed)`,
+      name: characterName,
       type: 'Character',
       stats: baseStats,
       rarity: playerLevel >= 10 ? 'Rare' : 'Uncommon',
@@ -170,13 +171,5 @@ export class CompanionManager {
         onNonKeyStat: ['That worked, but barely...', 'We got lucky this time.'],
       },
     };
-  }
-
-  private static extractEnemyName(scene: string): string {
-    const keywords = ['Bandit', 'Dragon', 'Goblin', 'Wizard', 'Beast', 'Knight', 'Assassin', 'Warrior', 'Mage'];
-    for (const keyword of keywords) {
-      if (scene.toLowerCase().includes(keyword.toLowerCase())) return keyword;
-    }
-    return 'Fighter';
   }
 }

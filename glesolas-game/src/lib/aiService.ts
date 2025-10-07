@@ -391,7 +391,6 @@ Generate a deck name and description that captures the ${theme} theme in YOUR vo
  * Creates unique name, flavor text, and contextual dialogue for recruited companions
  */
 export async function generateCompanionDialogue(
-  enemyName: string,
   encounterScene: string,
   defeatedVia: SkillPath
 ): Promise<CompanionDialogue | null> {
@@ -411,26 +410,28 @@ export async function generateCompanionDialogue(
 - Tone: ${activeDM.tone}
 - Style: ${activeDM.style}
 
-The player just defeated a ${enemyName} in this encounter: "${encounterScene}"
+The player just defeated an enemy in this encounter: "${encounterScene}"
 
 They defeated them through ${defeatMethod} (${defeatedVia}).
 
-Now they respect the player's prowess and want to join as a companion!
+Now the defeated character respects the player's prowess and wants to join as a companion!
 
 Create a unique companion character with:
-1. A creative name that fits the ${enemyName} character type (avoid generic "Reformed" or "The" prefix)
+1. Extract the actual character name from the scene (or create one that fits the character in the scene)
 2. Flavor text (1-2 sentences) that references the specific encounter and their personality in YOUR narrative style
 3. Contextual dialogue that shows their character and remembers how they were defeated
 
 The dialogue should:
-- Be specific to this encounter (reference elements from the scene)
+- Be specific to this encounter (reference elements from the scene and the actual character's name)
 - Show their personality evolving from defeated enemy to loyal companion
 - Match YOUR tone and style as the DM
 - Reference their preferred combat style (${defeatedVia})
 
+IMPORTANT: Extract the actual character name from the scene text, don't use generic types like "Bandit" or "Dragon".
+
 Keep all dialogue concise and in YOUR voice as the DM!`;
 
-  console.log(`🎭 Generating companion dialogue for ${enemyName} defeated via ${defeatedVia}`);
+  console.log(`🎭 Generating companion dialogue for encounter defeated via ${defeatedVia}`);
 
   return generateStructured<CompanionDialogue>(prompt, companionDialogueSchema, {
     temperature: 0.8,
