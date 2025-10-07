@@ -253,33 +253,7 @@ function App() {
     console.log('💪 Your Stats:', total);
     console.log('🔓 Unlocked Paths:', { mightUnlocked, fortuneUnlocked, cunningUnlocked });
 
-    const unlockedCount = [mightUnlocked, fortuneUnlocked, cunningUnlocked].filter(Boolean).length;
-
-    // TOTAL FAILURE: Didn't meet ANY requirements - must choose which bad thing happens
-    if (unlockedCount === 0) {
-      console.log('💀 TOTAL FAILURE - No paths unlocked! Choose your doom...');
-
-      const failureNarratives = await Promise.all([
-        generateActionNarrativeAsync(selectedCards, 'might', currentChallenge.scene, introScene),
-        generateActionNarrativeAsync(selectedCards, 'fortune', currentChallenge.scene, introScene),
-        generateActionNarrativeAsync(selectedCards, 'cunning', currentChallenge.scene, introScene),
-      ]);
-
-      const actions: ActionPath[] = [
-        { path: 'might', narrative: failureNarratives[0], unlocked: true, isTotalFailure: true },
-        { path: 'fortune', narrative: failureNarratives[1], unlocked: true, isTotalFailure: true },
-        { path: 'cunning', narrative: failureNarratives[2], unlocked: true, isTotalFailure: true },
-      ];
-
-      setNarrativeDice(prev => Math.max(0, prev - 3)); // Used 3 dice for failure scenarios
-      setAvailableActions(actions);
-      setIsGeneratingNarrative(false);
-      setPhase('action-choice');
-      return;
-    }
-
-    // NORMAL: Generate AI narratives for ALL paths (not just unlocked ones)
-    // The narrative itself will convey the consequence
+    // Generate AI narratives for ALL paths - each will be validated individually when chosen
     const [mightNarrative, fortuneNarrative, cunningNarrative] = await Promise.all([
       generateActionNarrativeAsync(selectedCards, 'might', currentChallenge.scene, introScene),
       generateActionNarrativeAsync(selectedCards, 'fortune', currentChallenge.scene, introScene),
@@ -304,12 +278,21 @@ function App() {
   const handleActionChoice = async (chosenPath: 'might' | 'fortune' | 'cunning') => {
     if (!currentChallenge) return;
 
-    // Check if this path was unlocked
-    const chosenAction = availableActions.find(a => a.path === chosenPath);
-    const isUnlocked = chosenAction?.unlocked ?? false;
+    // Calculate current stats to check if chosen path meets requirement
+    const total = calculateTotalStats(selectedCards, playerProfile);
+    const { might_req, fortune_req, cunning_req } = currentChallenge.requirements;
 
-    // Check if this is a total failure scenario (using the isTotalFailure flag)
-    const totalFailure = chosenAction?.isTotalFailure ?? false;
+    // Check if the CHOSEN path meets its requirement
+    let isUnlocked = false;
+    if (chosenPath === 'might') {
+      isUnlocked = total.might >= might_req;
+    } else if (chosenPath === 'fortune') {
+      isUnlocked = total.fortune >= fortune_req;
+    } else if (chosenPath === 'cunning') {
+      isUnlocked = total.cunning >= cunning_req;
+    }
+
+    console.log(`🎯 Chose ${chosenPath} path - Required: ${chosenPath === 'might' ? might_req : chosenPath === 'fortune' ? fortune_req : cunning_req}, You have: ${chosenPath === 'might' ? total.might : chosenPath === 'fortune' ? total.fortune : total.cunning}, Unlocked: ${isUnlocked}`);
 
     setIsGeneratingNarrative(true);
 
@@ -328,23 +311,7 @@ function App() {
     const difficulty = getDifficultyById(playerProfile.selectedDifficulty);
     const difficultyMultiplier = difficulty.rewardMultiplier;
 
-    if (totalFailure) {
-      // TOTAL FAILURE: All paths locked - choose your doom
-      success = false;
-      gloryGained = Math.floor(-50 * difficultyMultiplier);
-      narrativeDiceGained = 0;
-      console.log(`💀💀💀 TOTAL FAILURE - Choose lesser of evils. Lose glory: ${gloryGained}`);
-
-      consequence = {
-        type: 'failure',
-        effects: {
-          nextEncounterModifier: 5,
-          injuryDebuff: { might: -2, fortune: -2, cunning: -2 },
-          companionLoyaltyHit: true
-        },
-        message: "Complete failure! Your companions lose faith, and you're injured."
-      };
-    } else if (isUnlocked) {
+    if (isUnlocked) {
       // Path was unlocked - guaranteed success!
       success = true;
 
@@ -378,40 +345,21 @@ function App() {
         };
       }
     } else {
-      // Risky! Path was locked but others were unlocked - 50% chance of success
-      success = Math.random() >= 0.5;
+      // Path NOT unlocked - automatic failure!
+      success = false;
+      gloryGained = Math.floor(-40 * difficultyMultiplier);
+      narrativeDiceGained = 0;
+      console.log(`💀 Path locked - FAILURE! You didn't have enough ${chosenPath}. Lose glory: ${gloryGained}`);
 
-      if (success) {
-        // DM lets you pass - reduced rewards
-        const baseGlory = chosenPath === 'might' ? 25 : chosenPath === 'fortune' ? 20 : 30;
-        gloryGained = Math.floor(baseGlory * difficultyMultiplier);
-        narrativeDiceGained = 1;
-        console.log(`🎲 Locked path - DM mercy! Success with reduced glory: +${gloryGained}`);
-
-        consequence = {
-          type: 'partial',
-          effects: {
-            nextEncounterModifier: 2,
-            companionLoyaltyHit: false
-          },
-          message: "You took a risk and it paid off, but barely."
-        };
-      } else {
-        // Failed the risky choice - lose glory!
-        gloryGained = Math.floor(-30 * difficultyMultiplier);
-        narrativeDiceGained = 0;
-        console.log(`💀 Locked path - FAILED! Lose glory: ${gloryGained}`);
-
-        consequence = {
-          type: 'failure',
-          effects: {
-            nextEncounterModifier: 4,
-            injuryDebuff: { might: -1, fortune: -1, cunning: -1 },
-            companionLoyaltyHit: true
-          },
-          message: "Your reckless choice backfired. You're injured and companions are disappointed."
-        };
-      }
+      consequence = {
+        type: 'failure',
+        effects: {
+          nextEncounterModifier: 3,
+          injuryDebuff: { might: -1, fortune: -1, cunning: -1 },
+          companionLoyaltyHit: true
+        },
+        message: `Failed! You didn't have enough ${chosenPath} to overcome this challenge.`
+      };
     }
 
     // Generate resolution scene based on chosen path and success
