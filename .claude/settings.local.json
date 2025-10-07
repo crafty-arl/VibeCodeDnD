@@ -31,7 +31,12 @@
       "Bash(npm uninstall:*)",
       "Bash(timeout 10 npm run dev)",
       "Bash(git commit:*)",
-      "Bash(npx wrangler pages dev:*)"
+      "Bash(npx wrangler pages dev:*)",
+      "WebFetch(domain:elevenlabs.io)",
+      "Bash(npx tsc:*)",
+      "Read(//c/tmp/**)",
+      "Bash(taskkill:*)",
+      "mcp__cloudflare-observability__search_cloudflare_documentation"
     ],
     "deny": [],
     "ask": []

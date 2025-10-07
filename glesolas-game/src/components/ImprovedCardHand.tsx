@@ -172,9 +172,9 @@ export function ImprovedCardHand({
             </div>
           </div>
 
-          {/* Mobile Horizontal Scroll */}
-          <div className="md:hidden -mx-4 px-4">
-            <div className="flex gap-3 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin">
+          {/* Mobile Horizontal Scroll - Optimized */}
+          <div className="md:hidden -mx-3 px-3">
+            <div className="horizontal-scroll flex gap-3 pb-4">
               {hand.map((card, index) => {
                 const isSelected = isCardSelected(card);
                 const isClickable = !disabled && (isSelected || canSelectMore);
@@ -184,8 +184,8 @@ export function ImprovedCardHand({
                     key={card.id}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="flex-shrink-0 w-[160px] snap-center relative"
+                    transition={{ delay: index * 0.04, duration: 0.2 }}
+                    className="flex-shrink-0 w-[155px] snap-center relative gpu-accelerated"
                   >
                     {/* Selection Indicator */}
                     <AnimatePresence>
@@ -194,6 +194,7 @@ export function ImprovedCardHand({
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
                           exit={{ scale: 0 }}
+                          transition={{ duration: 0.15 }}
                           className="absolute -top-2 -right-2 z-10 bg-green-500 rounded-full p-1 shadow-lg"
                         >
                           <CheckCircle2 className="w-4 h-4 text-white" />
@@ -203,7 +204,7 @@ export function ImprovedCardHand({
 
                     <div
                       className={`
-                        relative rounded-lg overflow-hidden transition-all
+                        relative rounded-lg overflow-hidden snappy-transition mobile-touch-target
                         ${isSelected ? 'ring-2 ring-green-500 shadow-lg shadow-green-500/20' : ''}
                         ${!isClickable && !isSelected ? 'opacity-50' : ''}
                       `}
@@ -220,7 +221,7 @@ export function ImprovedCardHand({
                         <Button
                           size="sm"
                           variant="secondary"
-                          className="w-full h-7 text-xs gap-1 shadow-md"
+                          className="w-full h-8 text-xs gap-1 shadow-md"
                           onClick={(e) => {
                             e.stopPropagation();
                             setDetailCard(card);

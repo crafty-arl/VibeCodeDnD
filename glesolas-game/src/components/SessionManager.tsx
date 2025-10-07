@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Save, FolderOpen, Trash2, Clock, Trophy, Scroll, X } from 'lucide-react';
+import { Save, FolderOpen, Trash2, Clock, Trophy, Scroll, X, Play } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
@@ -196,7 +196,8 @@ function SessionCard({
             ) : (
               <>
                 <Button variant="default" size="sm" onClick={() => onLoad(session)}>
-                  <FolderOpen className="w-4 h-4" />
+                  <Play className="w-4 h-4 mr-1" />
+                  Play
                 </Button>
                 <Button
                   variant="outline"

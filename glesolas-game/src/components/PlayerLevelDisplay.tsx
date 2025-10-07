@@ -15,15 +15,18 @@ export function PlayerLevelDisplay({ profile, compact = false }: PlayerLevelDisp
 
   if (compact) {
     return (
-      <div className="flex items-center gap-3 bg-secondary/50 rounded-lg px-3 py-2 border border-accent/30">
-        <div className="flex items-center gap-2">
-          <Trophy className="w-5 h-5 text-yellow-400" />
-          <span className="font-bold text-lg">Lv {profile.level}</span>
+      <div className="flex items-center gap-1.5 sm:gap-2 bg-secondary/50 rounded-md px-2 py-1.5 sm:px-3 sm:py-2 border border-accent/30">
+        {/* Level Badge */}
+        <div className="flex items-center gap-1 sm:gap-1.5">
+          <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400 flex-shrink-0" />
+          <span className="font-bold text-xs sm:text-sm whitespace-nowrap">L{profile.level}</span>
         </div>
-        <div className="flex-1 min-w-[100px]">
-          <Progress value={xpProgress.percentage} className="h-2" />
-          <p className="text-xs text-muted-foreground mt-1">
-            {xpProgress.current.toLocaleString()} / {xpProgress.required.toLocaleString()} XP
+
+        {/* XP Progress - Hidden on very small screens */}
+        <div className="hidden xs:flex flex-col min-w-[60px] sm:min-w-[80px] flex-1 max-w-[120px]">
+          <Progress value={xpProgress.percentage} className="h-1.5 sm:h-2" />
+          <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 truncate">
+            {xpProgress.current}/{xpProgress.required}
           </p>
         </div>
       </div>

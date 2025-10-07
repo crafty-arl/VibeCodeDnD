@@ -7,6 +7,7 @@ export interface GameSession {
   glory: number;
   narrativeDice: number;
   phase: GamePhase;
+  gameMode?: 'menu' | 'campaign' | 'playground';
   hand: LoreCard[];
   activeCards: LoreCard[];
   selectedCards: LoreCard[];

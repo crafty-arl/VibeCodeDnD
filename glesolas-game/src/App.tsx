@@ -114,9 +114,10 @@ function App() {
 
   useEffect(() => {
     // Auto-save on state changes (debounced by phase changes)
-    if (phase !== 'home') {
+    if (phase !== 'home' && gameMode === 'campaign') {
       const sessionId = SessionManager.autoSave({
         phase,
+        gameMode,
         hand,
         activeCards,
         selectedCards,
@@ -138,7 +139,7 @@ function App() {
     // Keep legacy localStorage for backwards compatibility
     localStorage.setItem('glesolas_glory', String(glory));
     localStorage.setItem('glesolas_dice', String(narrativeDice));
-  }, [phase, hand, activeCards, selectedCards, introScene, currentChallenge, availableActions, lastResult, transitionScene, glory, narrativeDice]);
+  }, [phase, gameMode, hand, activeCards, selectedCards, introScene, currentChallenge, availableActions, lastResult, transitionScene, glory, narrativeDice]);
 
   const handleDeckSelection = async () => {
     setShowDeckSelector(false);
@@ -467,6 +468,7 @@ function App() {
   };
 
   const loadSessionState = (session: GameSession) => {
+    setGameMode(session.gameMode || 'campaign');
     setPhase(session.phase);
     setHand(session.hand || []);
     setActiveCards(session.activeCards);
@@ -484,6 +486,7 @@ function App() {
   const handleSaveSession = (name: string) => {
     const session = SessionManager.saveSession({
       phase,
+      gameMode,
       hand,
       activeCards,
       selectedCards,
@@ -697,7 +700,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-secondary/20 to-background no-overscroll">
+    <div className="mobile-full-height flex flex-col bg-gradient-to-br from-background via-secondary/20 to-background no-overscroll">
       {/* Header */}
       <GameHeader
         glory={glory}
@@ -711,9 +714,9 @@ function App() {
         onOpenCharacterSheet={() => setShowCharacterSheet(true)}
       />
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8">
-        <div className="max-w-4xl mx-auto space-y-6">
+      {/* Main Content - Mobile First */}
+      <main className="flex-1 overflow-y-auto smooth-scroll px-3 py-4 sm:px-4 sm:py-6 md:px-8">
+        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
 
         {/* Game Phases */}
         <AnimatePresence mode="wait">
@@ -739,25 +742,25 @@ function App() {
                 <p className="text-lg text-muted-foreground italic">Your legend awaits...</p>
               </motion.div>
 
-              {/* Main Action Buttons - Large and Prominent */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Main Action Buttons - Mobile First Grid */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
                 <motion.div
                   initial={{ x: -50, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: 0.3 }}
-                  whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
+                  className="instant-feedback"
                 >
-                  <Card className="border-2 border-primary/50 bg-gradient-to-br from-primary/10 via-background to-background hover:border-primary hover:shadow-xl hover:shadow-primary/20 transition-all cursor-pointer h-full"
+                  <Card className="border-2 border-primary/50 bg-gradient-to-br from-primary/10 via-background to-background active:border-primary transition-all cursor-pointer h-full mobile-touch-target"
                     onClick={handleStartCampaignMode}
                   >
-                    <CardContent className="p-8 flex flex-col items-center justify-center space-y-4 h-full min-h-[200px]">
-                      <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center">
-                        <Scroll className="w-10 h-10 text-primary" />
+                    <CardContent className="p-6 sm:p-8 flex flex-col items-center justify-center space-y-3 sm:space-y-4 h-full min-h-[160px] sm:min-h-[200px]">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-primary/20 flex items-center justify-center gpu-accelerated">
+                        <Scroll className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />
                       </div>
-                      <div className="text-center space-y-2">
-                        <h3 className="text-2xl font-bold">Campaign Mode</h3>
-                        <p className="text-sm text-muted-foreground">
+                      <div className="text-center space-y-1 sm:space-y-2">
+                        <h3 className="text-xl sm:text-2xl font-bold">Campaign Mode</h3>
+                        <p className="text-xs sm:text-sm text-muted-foreground">
                           Choose cards and battle challenges
                         </p>
                       </div>
@@ -772,19 +775,19 @@ function App() {
                   initial={{ y: -50, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.35 }}
-                  whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
+                  className="instant-feedback"
                 >
-                  <Card className="border-2 border-secondary/50 bg-gradient-to-br from-secondary/10 via-background to-background hover:border-secondary hover:shadow-xl hover:shadow-secondary/20 transition-all cursor-pointer h-full"
+                  <Card className="border-2 border-secondary/50 bg-gradient-to-br from-secondary/10 via-background to-background active:border-secondary transition-all cursor-pointer h-full mobile-touch-target"
                     onClick={handleStartPlaygroundMode}
                   >
-                    <CardContent className="p-8 flex flex-col items-center justify-center space-y-4 h-full min-h-[200px]">
-                      <div className="w-20 h-20 rounded-full bg-secondary/20 flex items-center justify-center">
-                        <span className="text-4xl">🎨</span>
+                    <CardContent className="p-6 sm:p-8 flex flex-col items-center justify-center space-y-3 sm:space-y-4 h-full min-h-[160px] sm:min-h-[200px]">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-secondary/20 flex items-center justify-center gpu-accelerated">
+                        <span className="text-3xl sm:text-4xl">🎨</span>
                       </div>
-                      <div className="text-center space-y-2">
-                        <h3 className="text-2xl font-bold">Playground Mode</h3>
-                        <p className="text-sm text-muted-foreground">
+                      <div className="text-center space-y-1 sm:space-y-2">
+                        <h3 className="text-xl sm:text-2xl font-bold">Playground Mode</h3>
+                        <p className="text-xs sm:text-sm text-muted-foreground">
                           Create your own story adventure
                         </p>
                       </div>
@@ -796,19 +799,19 @@ function App() {
                   initial={{ x: 50, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: 0.4 }}
-                  whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
+                  className="instant-feedback"
                 >
-                  <Card className="border-2 border-accent/50 bg-gradient-to-br from-accent/10 via-background to-background hover:border-accent hover:shadow-xl hover:shadow-accent/20 transition-all cursor-pointer h-full"
+                  <Card className="border-2 border-accent/50 bg-gradient-to-br from-accent/10 via-background to-background active:border-accent transition-all cursor-pointer h-full mobile-touch-target"
                     onClick={handleRollInitiative}
                   >
-                    <CardContent className="p-8 flex flex-col items-center justify-center space-y-4 h-full min-h-[200px]">
-                      <div className="w-20 h-20 rounded-full bg-accent/20 flex items-center justify-center">
-                        <Trophy className="w-10 h-10 text-accent" />
+                    <CardContent className="p-6 sm:p-8 flex flex-col items-center justify-center space-y-3 sm:space-y-4 h-full min-h-[160px] sm:min-h-[200px]">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-accent/20 flex items-center justify-center gpu-accelerated">
+                        <Trophy className="w-8 h-8 sm:w-10 sm:h-10 text-accent" />
                       </div>
-                      <div className="text-center space-y-2">
-                        <h3 className="text-2xl font-bold">Quick Start</h3>
-                        <p className="text-sm text-muted-foreground">
+                      <div className="text-center space-y-1 sm:space-y-2">
+                        <h3 className="text-xl sm:text-2xl font-bold">Quick Start</h3>
+                        <p className="text-xs sm:text-sm text-muted-foreground">
                           {isGeneratingNarrative ? 'Weaving your tale...' : 'Random quest, jump right in'}
                         </p>
                       </div>
@@ -823,19 +826,19 @@ function App() {
                   initial={{ x: 50, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: 0.45 }}
-                  whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
+                  className="instant-feedback"
                 >
-                  <Card className="border-2 border-blue-500/50 bg-gradient-to-br from-blue-500/10 via-background to-background hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/20 transition-all cursor-pointer h-full"
+                  <Card className="border-2 border-blue-500/50 bg-gradient-to-br from-blue-500/10 via-background to-background active:border-blue-500 transition-all cursor-pointer h-full mobile-touch-target"
                     onClick={() => setShowSessionManager(true)}
                   >
-                    <CardContent className="p-8 flex flex-col items-center justify-center space-y-4 h-full min-h-[200px]">
-                      <div className="w-20 h-20 rounded-full bg-blue-500/20 flex items-center justify-center">
-                        <Dices className="w-10 h-10 text-blue-500" />
+                    <CardContent className="p-6 sm:p-8 flex flex-col items-center justify-center space-y-3 sm:space-y-4 h-full min-h-[160px] sm:min-h-[200px]">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-blue-500/20 flex items-center justify-center gpu-accelerated">
+                        <Dices className="w-8 h-8 sm:w-10 sm:h-10 text-blue-500" />
                       </div>
-                      <div className="text-center space-y-2">
-                        <h3 className="text-2xl font-bold">Load Session</h3>
-                        <p className="text-sm text-muted-foreground">
+                      <div className="text-center space-y-1 sm:space-y-2">
+                        <h3 className="text-xl sm:text-2xl font-bold">Load Session</h3>
+                        <p className="text-xs sm:text-sm text-muted-foreground">
                           Continue a saved adventure
                         </p>
                       </div>
