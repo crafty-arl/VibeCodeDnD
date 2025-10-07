@@ -317,7 +317,7 @@ function App() {
 
       // KEY STAT SYSTEM: Full rewards if using the key stat, reduced if not
       if (isKeyStat) {
-        // Using the key stat = full rewards
+        // Using the key stat = full rewards + clear pending modifiers
         const baseGlory = chosenPath === 'might' ? 50 : chosenPath === 'fortune' ? 40 : 60;
         gloryGained = Math.floor(baseGlory * difficultyMultiplier);
         narrativeDiceGained = 2;
@@ -325,37 +325,35 @@ function App() {
 
         consequence = {
           type: 'perfect',
-          effects: {},
+          effects: {
+            clearPendingModifier: true // Remove accumulated difficulty
+          },
           message: "Perfect execution! Your companions are impressed."
         };
       } else {
-        // Using non-key stat = reduced rewards (60% of normal)
+        // Using non-key stat = reduced rewards but no penalties
         const baseGlory = chosenPath === 'might' ? 50 : chosenPath === 'fortune' ? 40 : 60;
-        gloryGained = Math.floor(baseGlory * 0.6 * difficultyMultiplier);
+        gloryGained = Math.floor(baseGlory * 0.75 * difficultyMultiplier);
         narrativeDiceGained = 1;
         console.log(`⚠️ Non-key stat used. Reduced glory: +${gloryGained} (key was ${currentChallenge.keyStat})`);
 
         consequence = {
           type: 'partial',
-          effects: {
-            nextEncounterModifier: 3,
-            companionLoyaltyHit: true
-          },
-          message: `You succeeded, but ignored the key stat (${currentChallenge.keyStat}). Next encounter will be harder.`
+          effects: {},
+          message: `You succeeded, though the key stat (${currentChallenge.keyStat}) would have been more effective.`
         };
       }
     } else {
-      // Path NOT unlocked - automatic failure!
+      // Path NOT unlocked - failure with minor penalty only
       success = false;
-      gloryGained = Math.floor(-40 * difficultyMultiplier);
+      gloryGained = Math.floor(-20 * difficultyMultiplier); // Reduced from -40
       narrativeDiceGained = 0;
       console.log(`💀 Path locked - FAILURE! You didn't have enough ${chosenPath}. Lose glory: ${gloryGained}`);
 
       consequence = {
         type: 'failure',
         effects: {
-          nextEncounterModifier: 3,
-          injuryDebuff: { might: -1, fortune: -1, cunning: -1 },
+          nextEncounterModifier: 1, // Reduced from 3 - only +1 difficulty
           companionLoyaltyHit: true
         },
         message: `Failed! You didn't have enough ${chosenPath} to overcome this challenge.`
@@ -455,37 +453,23 @@ function App() {
 
     // Apply consequences to player profile
     if (consequence) {
-      // Track partial success streak and threat level
-      if (consequence.type === 'partial') {
-        playerProfile.partialSuccessStreak = (playerProfile.partialSuccessStreak || 0) + 1;
-
-        if (playerProfile.partialSuccessStreak >= 3) {
-          playerProfile.threatLevel = Math.min(10, (playerProfile.threatLevel || 0) + 2);
-          console.log(`⚠️ Threat rising! ${playerProfile.partialSuccessStreak} partial successes. Threat level: ${playerProfile.threatLevel}`);
-        }
-      } else if (consequence.type === 'perfect') {
+      // Perfect victories clear accumulated difficulty and threat
+      if (consequence.type === 'perfect') {
         playerProfile.partialSuccessStreak = 0;
-        playerProfile.threatLevel = Math.max(0, (playerProfile.threatLevel || 0) - 1);
+        playerProfile.threatLevel = Math.max(0, (playerProfile.threatLevel || 0) - 2);
+
+        // Clear pending encounter modifier (recovery mechanic)
+        if (consequence.effects.clearPendingModifier) {
+          playerProfile.pendingEncounterModifier = 0;
+          console.log(`✨ Perfect victory! Cleared accumulated difficulty and reduced threat.`);
+        }
       }
 
-      // Add injuries
-      if (consequence.effects.injuryDebuff) {
-        const injury: import('./types/player').Injury = {
-          id: `injury_${Date.now()}`,
-          name: consequence.type === 'failure' ? 'Battle Wounds' : 'Minor Injury',
-          description: 'Still recovering from your last encounter',
-          statDebuff: consequence.effects.injuryDebuff,
-          encountersRemaining: 2,
-        };
-
-        playerProfile.activeInjuries = playerProfile.activeInjuries || [];
-        playerProfile.activeInjuries.push(injury);
-        console.log(`🤕 Injury sustained: ${injury.name}`);
-      }
-
-      // Set pending encounter modifier
+      // Set pending encounter modifier (capped at +3)
       if (consequence.effects.nextEncounterModifier) {
-        playerProfile.pendingEncounterModifier = consequence.effects.nextEncounterModifier;
+        const currentModifier = playerProfile.pendingEncounterModifier || 0;
+        playerProfile.pendingEncounterModifier = Math.min(3, currentModifier + consequence.effects.nextEncounterModifier);
+        console.log(`⚠️ Next encounter modifier: +${playerProfile.pendingEncounterModifier} (capped at +3)`);
       }
     }
 

@@ -536,12 +536,15 @@ export function getScaledChallengeRequirements(playerProfile: PlayerProfile): {
   // Get current difficulty tier
   const difficulty = getDifficultyById(playerProfile.selectedDifficulty || 'Normal');
 
-  // Base calculation: scale with cards available
-  // Each card slot contributes ~5 points of potential stats (avg card has ~6 total / 3 stats = 2 per stat)
-  const basePerCard = 5;
+  // REBALANCED: Base calculation targets 70% of available stats
+  // Average card provides ~6 total stats / 3 = 2 per stat
+  // Player can select up to playAreaSize cards
+  // So available stats per type ≈ playAreaSize * 2
+  // Target 70% means challenges should require ~playAreaSize * 1.4
+  const basePerCard = 3.5; // Reduced from 5 to make challenges more achievable
 
-  // Add exponential level scaling (+level^1.2)
-  const levelBonus = Math.pow(level, 1.2);
+  // Add gentler level scaling (level^0.8 instead of level^1.2)
+  const levelBonus = Math.pow(level, 0.8);
 
   // Calculate base requirement
   const baseRequirement = playAreaSize * basePerCard + levelBonus;
@@ -549,21 +552,21 @@ export function getScaledChallengeRequirements(playerProfile: PlayerProfile): {
   // Apply difficulty multiplier
   const scaledRequirement = baseRequirement * difficulty.requirementMultiplier;
 
-  // Apply pending encounter modifier from consequences
+  // Apply pending encounter modifier (capped at +3 in App.tsx)
   const pendingModifier = playerProfile.pendingEncounterModifier || 0;
 
-  // Apply threat level modifier
-  const threatModifier = playerProfile.threatLevel || 0;
+  // Threat level has reduced impact (50% of previous)
+  const threatModifier = (playerProfile.threatLevel || 0) * 0.5;
 
-  // Add random variance (±25% for variety)
-  const variance = 0.25;
+  // Reduced variance (±15% instead of ±25% for more predictable challenges)
+  const variance = 0.15;
   const might_req = Math.floor((scaledRequirement + pendingModifier + threatModifier) * (1 + (Math.random() - 0.5) * variance));
   const fortune_req = Math.floor((scaledRequirement + pendingModifier + threatModifier) * (1 + (Math.random() - 0.5) * variance));
   const cunning_req = Math.floor((scaledRequirement + pendingModifier + threatModifier) * (1 + (Math.random() - 0.5) * variance));
 
   return {
-    might_req: Math.max(3, might_req), // Minimum 3
-    fortune_req: Math.max(3, fortune_req),
-    cunning_req: Math.max(3, cunning_req)
+    might_req: Math.max(2, might_req), // Reduced minimum from 3 to 2
+    fortune_req: Math.max(2, fortune_req),
+    cunning_req: Math.max(2, cunning_req)
   };
 }
