@@ -41,6 +41,21 @@ export function AISingleCardGenerator({ onCardGenerated, onClose }: AISingleCard
         return;
       }
 
+      // Generate card image
+      const { generateSceneImageUrl, createSceneImagePrompt } = await import('@/lib/imageService');
+      const imagePrompt = createSceneImagePrompt(
+        result.type,
+        `${result.name} - ${result.flavor}`,
+        ''
+      );
+
+      const artUrl = generateSceneImageUrl(imagePrompt, {
+        model: 'flux',
+        width: 512,
+        height: 512,
+        nologo: true
+      });
+
       // Convert GeneratedCard to LoreCard format
       const loreCard: LoreCard = {
         id: `ai-card-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -53,6 +68,7 @@ export function AISingleCardGenerator({ onCardGenerated, onClose }: AISingleCard
           cunning: result.cunning,
         },
         rarity: 'Common', // Default rarity
+        art: artUrl,
       };
 
       setGeneratedCard(loreCard);
