@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import { jsonrepair } from 'jsonrepair';
 import type { ZodSchema } from 'zod';
 import { NarratorManager } from './narratorManager';
-import { deckGenerationSchema, type GeneratedDeck, companionDialogueSchema, type CompanionDialogue } from './schemas/narrativeSchemas';
+import { deckGenerationSchema, type GeneratedDeck, companionDialogueSchema, type CompanionDialogue, cardSchema, type GeneratedCard, narratorGenerationSchema, type GeneratedNarrator } from './schemas/narrativeSchemas';
 import type { SkillPath } from '@/types/game';
 
 /**
@@ -348,7 +348,16 @@ export async function generateDeck(
     return null;
   }
 
-  const prompt = `Generate a complete deck of ${cardCount} cards for the GLESOLAS tabletop card game.
+  const activeDM = NarratorManager.getActiveNarrator();
+
+  const prompt = `You are "${activeDM.name}", a DM creating a themed deck for GLESOLAS.
+
+**Your DM Personality:**
+- Personality: ${activeDM.personality}
+- Tone: ${activeDM.tone}
+- Style: ${activeDM.style}
+
+Generate a complete deck of ${cardCount} cards for the GLESOLAS tabletop card game.
 
 **Theme:** ${theme}
 
@@ -358,7 +367,7 @@ export async function generateDeck(
 3. Each card needs: name, type (character/item/location), flavor text, and stats (might, fortune, cunning from 0-5)
 4. Cards should be thematically cohesive and work well together in gameplay
 5. Stats should be balanced - mix of high and low stat cards
-6. Flavor text should be witty and reference the theme
+6. Flavor text should match YOUR tone and style as the DM
 7. Names should be creative and memorable
 
 **Stat Guidelines:**
@@ -366,7 +375,7 @@ export async function generateDeck(
 - Fortune: Luck, chance, unpredictability
 - Cunning: Intelligence, wit, strategy
 
-Generate a deck name and description that captures the ${theme} theme, then create all ${cardCount} cards.`;
+Generate a deck name and description that captures the ${theme} theme in YOUR voice, then create all ${cardCount} cards with flavor text matching YOUR narrative style.`;
 
   console.log(`🎴 Generating ${cardCount} cards with theme: ${theme}`);
 
@@ -390,34 +399,146 @@ export async function generateCompanionDialogue(
     return null;
   }
 
+  const activeDM = NarratorManager.getActiveNarrator();
   const defeatMethod = defeatedVia === 'might' ? 'physical combat' :
                        defeatedVia === 'cunning' ? 'clever tactics' :
                        'fortunate circumstances';
 
-  const prompt = `You just defeated a ${enemyName} in this encounter: "${encounterScene}"
+  const prompt = `You are "${activeDM.name}", a DM handling companion recruitment in GLESOLAS.
 
-You defeated them through ${defeatMethod} (${defeatedVia}).
+**Your DM Personality:**
+- Personality: ${activeDM.personality}
+- Tone: ${activeDM.tone}
+- Style: ${activeDM.style}
 
-Now they respect your prowess and want to join you as a companion!
+The player just defeated a ${enemyName} in this encounter: "${encounterScene}"
+
+They defeated them through ${defeatMethod} (${defeatedVia}).
+
+Now they respect the player's prowess and want to join as a companion!
 
 Create a unique companion character with:
 1. A creative name that fits the ${enemyName} character type (avoid generic "Reformed" or "The" prefix)
-2. Witty flavor text (1-2 sentences) that references the specific encounter and their personality
+2. Flavor text (1-2 sentences) that references the specific encounter and their personality in YOUR narrative style
 3. Contextual dialogue that shows their character and remembers how they were defeated
 
-The dialogue should be:
-- Specific to this encounter (reference elements from the scene)
+The dialogue should:
+- Be specific to this encounter (reference elements from the scene)
 - Show their personality evolving from defeated enemy to loyal companion
-- Match the tone of a humorous tabletop gaming experience
+- Match YOUR tone and style as the DM
 - Reference their preferred combat style (${defeatedVia})
 
-Keep all dialogue concise and punchy!`;
+Keep all dialogue concise and in YOUR voice as the DM!`;
 
   console.log(`🎭 Generating companion dialogue for ${enemyName} defeated via ${defeatedVia}`);
 
   return generateStructured<CompanionDialogue>(prompt, companionDialogueSchema, {
     temperature: 0.8,
     maxTokens: 500,
+  });
+}
+
+/**
+ * Generate a single card based on a custom prompt
+ * Creates one character, item, or location card matching the user's description
+ * @param prompt - User's description of what card they want (e.g., "a sarcastic robot wizard")
+ * @param preferredType - Optional preferred card type
+ * @returns Generated card or null on error
+ */
+export async function generateSingleCard(
+  prompt: string,
+  preferredType?: 'character' | 'item' | 'location'
+): Promise<GeneratedCard | null> {
+  if (!isAIAvailable() || !STRUCTURED_OUTPUT_ENABLED) {
+    return null;
+  }
+
+  const typeGuidance = preferredType
+    ? `**Card Type:** You MUST create a ${preferredType} card.`
+    : `**Card Type:** Choose the most appropriate type (character, item, or location) based on the description.`;
+
+  const activeDM = NarratorManager.getActiveNarrator();
+
+  const aiPrompt = `You are "${activeDM.name}", a DM creating a card for the GLESOLAS tabletop game.
+
+**Your DM Personality:**
+- Personality: ${activeDM.personality}
+- Tone: ${activeDM.tone}
+- Style: ${activeDM.style}
+
+Generate a single card based on this description: "${prompt}"
+
+${typeGuidance}
+
+**Requirements:**
+1. Create a unique, creative name that captures the essence of the description
+2. Write flavor text (1-2 sentences) that matches YOUR personality, tone, and style
+3. Assign balanced stats (0-5 for might, fortune, cunning):
+   - Might: Physical power, strength, combat ability
+   - Fortune: Luck, chance, unpredictability
+   - Cunning: Intelligence, wit, strategy
+4. Make sure stats reflect the character's nature (e.g., a wizard would have high cunning, low might)
+5. Stats should be balanced - not all 5s, not all 0s
+
+**Card Type Guidance:**
+- Character: People, creatures, beings with personality
+- Item: Objects, tools, weapons, magical artifacts
+- Location: Places, settings, environments
+
+Stay true to YOUR DM personality when writing the flavor text.`;
+
+  console.log(`🎴 Generating single card from prompt: "${prompt}"`);
+
+  return generateStructured<GeneratedCard>(aiPrompt, cardSchema, {
+    temperature: 0.9,
+    maxTokens: 300,
+  });
+}
+
+/**
+ * Generate a narrator preset from a user prompt
+ * Creates a complete narrator personality, tone, style, and system prompt
+ * @param prompt - User's description of the narrator (e.g., "a mysterious fortune teller")
+ * @returns Generated narrator or null on error
+ */
+export async function generateNarratorFromPrompt(
+  prompt: string
+): Promise<GeneratedNarrator | null> {
+  if (!isAIAvailable() || !STRUCTURED_OUTPUT_ENABLED) {
+    return null;
+  }
+
+  const aiPrompt = `You are a meta-AI helping to create narrator personalities for the GLESOLAS tabletop game.
+
+A user wants a narrator that is: "${prompt}"
+
+Create a complete narrator personality with:
+
+1. **Name**: A creative, memorable name that captures their essence
+2. **Description**: A brief overview of their narrative style (1-2 sentences)
+3. **Personality**: Their core traits (e.g., "mysterious and enigmatic", "enthusiastic and energetic")
+4. **Tone**: The emotional quality they bring (e.g., "dark and foreboding", "upbeat and encouraging", "sarcastic and witty")
+5. **Style**: How they tell stories (e.g., "concise and punchy", "flowing and descriptive", "cryptic riddles")
+6. **System Prompt**: A complete AI instruction prompt (3-5 sentences, MAX 800 characters) that defines:
+   - Who they are as a narrator
+   - Their unique voice and perspective
+   - How they should narrate (sentence structure, vocabulary, etc.)
+   - Any signature phrases or habits
+
+IMPORTANT: Keep the system prompt under 800 characters but make it specific and actionable.
+
+Examples of good system prompts:
+- "You are Madame Zelara, a mysterious fortune teller. Speak in cryptic riddles and prophetic warnings. Use mystical imagery and always reference fate, destiny, and the cards. Keep narration brief but ominous."
+- "You are Coach Thunder, an enthusiastic sports commentator. Treat every adventure like a championship game! Use sports metaphors constantly and deliver exciting play-by-play commentary."
+- "You are The Archivist, a dusty old scholar. Narrate with dry academic precision, citing fictional sources. Use formal language filled with obscure vocabulary."
+
+Create a unique, memorable narrator that matches the user's request!`;
+
+  console.log(`🎭 Generating narrator from prompt: "${prompt}"`);
+
+  return generateStructured<GeneratedNarrator>(aiPrompt, narratorGenerationSchema, {
+    temperature: 0.9,
+    maxTokens: 600,
   });
 }
 

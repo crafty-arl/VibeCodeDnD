@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Library, Layers, Plus, Heart, Sword } from 'lucide-react';
+import { X, Library, Layers, Plus, Heart, Sword, Wand2 } from 'lucide-react';
 import { DeckManager, type Deck } from '@/lib/deckManager';
 import { CompanionManager } from '@/lib/companionManager';
 import { LoreCardComponent } from './LoreCardComponent';
 import { AIDeckGenerator } from './AIDeckGenerator';
+import { AISingleCardGenerator } from './AISingleCardGenerator';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -20,6 +21,7 @@ export function DeckManagementDrawer({ isOpen, onClose }: DeckManagementDrawerPr
   const [activeTab, setActiveTab] = useState('collection');
   const [showDeckEditor, setShowDeckEditor] = useState(false);
   const [showAIGenerator, setShowAIGenerator] = useState(false);
+  const [showSingleCardGenerator, setShowSingleCardGenerator] = useState(false);
   const [editingDeck, setEditingDeck] = useState<Deck | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -223,7 +225,7 @@ export function DeckManagementDrawer({ isOpen, onClose }: DeckManagementDrawerPr
 
                 {/* Create Tab */}
                 <TabsContent value="create" className="mt-4 space-y-4">
-                  {!showDeckEditor && !showAIGenerator && (
+                  {!showDeckEditor && !showAIGenerator && !showSingleCardGenerator && (
                     <div className="space-y-3">
                       <Button
                         onClick={handleCreateNewDeck}
@@ -240,7 +242,16 @@ export function DeckManagementDrawer({ isOpen, onClose }: DeckManagementDrawerPr
                         variant="outline"
                       >
                         <Library className="w-4 h-4 mr-2" />
-                        AI Generate Deck
+                        AI Generate Full Deck
+                      </Button>
+                      <Button
+                        onClick={() => setShowSingleCardGenerator(true)}
+                        className="w-full"
+                        size="lg"
+                        variant="outline"
+                      >
+                        <Wand2 className="w-4 h-4 mr-2" />
+                        AI Generate Single Card
                       </Button>
                     </div>
                   )}
@@ -252,6 +263,23 @@ export function DeckManagementDrawer({ isOpen, onClose }: DeckManagementDrawerPr
                         setShowAIGenerator(false);
                       }}
                       onCancel={() => setShowAIGenerator(false)}
+                    />
+                  )}
+
+                  {showSingleCardGenerator && (
+                    <AISingleCardGenerator
+                      onCardGenerated={(card) => {
+                        // Add card to active deck
+                        const activeDeckData = DeckManager.getActiveDeck();
+                        DeckManager.updateDeck(activeDeckData.id, {
+                          cards: [...activeDeckData.cards, card],
+                          updatedAt: Date.now()
+                        });
+                        setShowSingleCardGenerator(false);
+                        // Switch to collection tab to show the new card
+                        setActiveTab('collection');
+                      }}
+                      onClose={() => setShowSingleCardGenerator(false)}
                     />
                   )}
                 </TabsContent>

@@ -28,9 +28,18 @@ Stay 100% in character with this personality, tone, and style throughout your na
 Describe the opening scene (2-3 sentences) directly to YOUR player using "you" and "your".
 
 **The Player's Cards:**
-- Character: ${character.name} - ${character.flavor}
+- Character: ${character.name}
+  Personality: ${character.flavor}
+  Stats: Might ${character.stats.might}, Fortune ${character.stats.fortune}, Cunning ${character.stats.cunning}${character.loyalty !== undefined ? `
+  Companion Status: ${character.loyalty >= 100 ? 'Devoted' : character.loyalty >= 50 ? 'Loyal' : character.loyalty >= 20 ? 'Friendly' : 'Neutral'} (Loyalty: ${character.loyalty})` : ''}${character.preferredPath ? `
+  Combat Style: Prefers ${character.preferredPath}` : ''}${character.encountersWon || character.encountersLost ? `
+  Experience: ${character.encountersWon || 0} victories, ${character.encountersLost || 0} defeats` : ''}
+
 - Item: ${item.name} - ${item.flavor}
-- Location: ${location.name} - ${location.flavor}`;
+  Stats: Might ${item.stats.might}, Fortune ${item.stats.fortune}, Cunning ${item.stats.cunning}
+
+- Location: ${location.name} - ${location.flavor}
+  Stats: Might ${location.stats.might}, Fortune ${location.stats.fortune}, Cunning ${location.stats.cunning}`;
 
   // Try to get contextually relevant cards from Vectorize
   if (availableCards && availableCards.length > 0) {
@@ -92,7 +101,16 @@ ${challenge ? `Challenge: "${challenge}"` : ''}
 
 **What YOU Did:**
 - YOU used ${pathDescriptions[path]} and ${outcome}
-- YOUR cards: ${cards.map(c => `${c.name} (${c.flavor})`).join(', ')}
+- YOUR cards:
+${cards.map(c => {
+  let info = `  * ${c.name} (${c.type}): ${c.flavor}`;
+  info += `\n    Stats: Might ${c.stats.might}, Fortune ${c.stats.fortune}, Cunning ${c.stats.cunning}`;
+  if (c.type === 'Character' && c.loyalty !== undefined) {
+    info += `\n    Companion: ${c.loyalty >= 50 ? 'Loyal' : 'Friendly'}`;
+    if (c.preferredPath) info += `, prefers ${c.preferredPath}`;
+  }
+  return info;
+}).join('\n')}
 
 Tell the player what happens to THEM. Use second-person: "You ${success ? 'triumph' : 'stumble'}", "Your cards...", "You see...". Never use third-person like "the player" or "they".`;
 }
@@ -144,7 +162,19 @@ ${introScene ? `Previous scene: "${introScene}"` : ''}
 Challenge: "${challenge}"
 
 **YOUR Cards:**
-${cards.map(c => `- ${c.name} (${c.flavor})`).join('\n')}
+${cards.map(c => {
+  let info = `- ${c.name} (${c.type}): ${c.flavor}`;
+  info += `\n  Stats: Might ${c.stats.might}, Fortune ${c.stats.fortune}, Cunning ${c.stats.cunning}`;
+  if (c.type === 'Character' && c.loyalty !== undefined) {
+    const loyaltyTier = c.loyalty >= 100 ? 'Devoted' : c.loyalty >= 50 ? 'Loyal' : c.loyalty >= 20 ? 'Friendly' : 'Neutral';
+    info += `\n  Companion: ${loyaltyTier}`;
+    if (c.preferredPath) info += `, specializes in ${c.preferredPath}`;
+    if (c.encountersWon || c.encountersLost) {
+      info += `\n  Battle-tested: ${c.encountersWon || 0}W/${c.encountersLost || 0}L`;
+    }
+  }
+  return info;
+}).join('\n')}
 
 **YOUR Plan:**
 YOU want to ${desc.verb} this challenge using ${desc.approach}. YOUR approach is ${desc.style}.
@@ -180,7 +210,17 @@ ${introScene ? `Opening: "${introScene}"` : ''}
 ${transitionContext ? `Recent events: "${transitionContext}"` : ''}
 
 **Player's Cards:**
-${cardStats}
+${cards.map(c => {
+  let info = `- ${c.name} (${c.type})`;
+  info += `\n  Flavor: ${c.flavor}`;
+  info += `\n  Stats: Might ${c.stats.might}, Fortune ${c.stats.fortune}, Cunning ${c.stats.cunning}`;
+  if (c.type === 'Character' && c.loyalty !== undefined) {
+    const loyaltyTier = c.loyalty >= 100 ? 'Devoted' : c.loyalty >= 50 ? 'Loyal' : c.loyalty >= 20 ? 'Friendly' : 'Neutral';
+    info += `\n  ${loyaltyTier} Companion`;
+    if (c.preferredPath) info += ` (${c.preferredPath} specialist)`;
+  }
+  return info;
+}).join('\n')}
 
 **CRITICAL Requirements:**
 1. Challenge must be exactly 1-2 sentences (under 300 characters total)
@@ -238,7 +278,16 @@ Create a brief transition (1-2 sentences, MAX 250 characters) describing what YO
 - YOU used ${pathLabels[previousPath]} and ${previousSuccess ? 'succeeded' : 'failed'}
 
 **What YOU Face Next:**
-- YOUR new cards: ${newCards.map(c => c.name).join(', ')}
+- YOUR new cards:
+${newCards.map(c => {
+  let info = `  * ${c.name} (${c.type})`;
+  if (c.type === 'Character' && c.loyalty !== undefined) {
+    const loyaltyTier = c.loyalty >= 50 ? 'Loyal' : 'Friendly';
+    info += ` - ${loyaltyTier} companion`;
+    if (c.preferredPath) info += `, ${c.preferredPath} fighter`;
+  }
+  return info;
+}).join('\n')}
 - Next challenge: "${newChallenge}"
 
 Tell the player what THEY experience as the story continues. Use second-person: "You move forward...", "Your next challenge...", "You find yourself...". Bridge the action for THEM.

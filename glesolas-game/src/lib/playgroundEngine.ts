@@ -79,10 +79,52 @@ Type: ${playerInput.type}
 Action: "${playerInput.prompt}"
 `;
 
-  // Add cards if provided
+  // Add cards if provided with full character context
   if (cards.length > 0) {
-    const cardList = cards.map(c => `- ${c.name}: ${c.flavor}`).join('\n');
-    prompt += `\n**Cards in Play:**\n${cardList}`;
+    // Separate characters from items/locations for better context
+    const characters = cards.filter(c => c.type === 'Character');
+    const nonCharacters = cards.filter(c => c.type !== 'Character');
+
+    if (characters.length > 0) {
+      const charList = characters.map(c => {
+        let charInfo = `- ${c.name} (${c.type})`;
+        charInfo += `\n  Personality: ${c.flavor}`;
+        charInfo += `\n  Stats: Might ${c.stats.might}, Fortune ${c.stats.fortune}, Cunning ${c.stats.cunning}`;
+
+        // Add companion-specific context if available
+        if (c.loyalty !== undefined) {
+          const loyaltyTier = c.loyalty >= 100 ? 'Devoted' : c.loyalty >= 50 ? 'Loyal' : c.loyalty >= 20 ? 'Friendly' : 'Neutral';
+          charInfo += `\n  Loyalty: ${loyaltyTier} (${c.loyalty})`;
+
+          if (c.preferredPath) {
+            const pathDesc = c.preferredPath === 'might' ? 'prefers direct combat' :
+                           c.preferredPath === 'cunning' ? 'favors clever tactics' :
+                           'relies on luck and fortune';
+            charInfo += `\n  Combat Style: ${pathDesc}`;
+          }
+
+          if (c.encountersWon || c.encountersLost) {
+            charInfo += `\n  Experience: ${c.encountersWon || 0} victories, ${c.encountersLost || 0} defeats`;
+          }
+
+          // Add companion dialogue hints if available
+          if (c.dialogue?.onPlay && c.dialogue.onPlay.length > 0) {
+            charInfo += `\n  Recent quote: "${c.dialogue.onPlay[0]}"`;
+          }
+        }
+
+        return charInfo;
+      }).join('\n\n');
+
+      prompt += `\n\n**Characters in Play:**\n${charList}`;
+    }
+
+    if (nonCharacters.length > 0) {
+      const itemList = nonCharacters.map(c =>
+        `- ${c.name} (${c.type}): ${c.flavor}`
+      ).join('\n');
+      prompt += `\n\n**Items & Locations:**\n${itemList}`;
+    }
   }
 
   // Task description based on prompt type
@@ -139,12 +181,25 @@ Genre: ${genre}
 Theme: ${themeDesc}
 
 **Starting Cards:**
-${cards.map(c => `- ${c.name}: ${c.flavor}`).join('\n')}
+${cards.map(c => {
+  let info = `- ${c.name} (${c.type}): ${c.flavor}`;
+  if (c.type === 'Character') {
+    info += `\n  Stats: Might ${c.stats.might}, Fortune ${c.stats.fortune}, Cunning ${c.stats.cunning}`;
+    if (c.loyalty !== undefined) {
+      const loyaltyTier = c.loyalty >= 100 ? 'Devoted companion' : c.loyalty >= 50 ? 'Loyal ally' : c.loyalty >= 20 ? 'Friendly' : 'Neutral';
+      info += ` | ${loyaltyTier}`;
+      if (c.preferredPath) {
+        info += ` | Favors ${c.preferredPath}`;
+      }
+    }
+  }
+  return info;
+}).join('\n')}
 
 **Your Task:**
 Create an engaging opening scene (2-4 sentences) that:
 - Sets up ${themeDesc}
-- Incorporates the starting cards naturally
+- Incorporates the starting cards naturally, referencing character personalities and traits
 - Establishes an intriguing hook
 - Ends with a question or choice for the player
 
@@ -287,12 +342,13 @@ export function createPlaygroundScene(
   narrative: string,
   playerAction: string | undefined,
   cards: LoreCard[],
-  previousSceneNarrative?: string
+  previousSceneNarrative?: string,
+  genre?: string
 ): PlaygroundScene {
   const sceneId = `scene_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-  // Generate image for this scene
-  const imagePrompt = createSceneImagePrompt('scene', narrative);
+  // Generate image for this scene with genre context
+  const imagePrompt = createSceneImagePrompt('scene', narrative, undefined, genre);
   const sessionSeed = getSessionAestheticSeed();
 
   const imageUrl = generateSceneImageUrl(imagePrompt, {

@@ -15,16 +15,95 @@ export interface ImageGenerationOptions {
 }
 
 /**
- * Concise style guide for image generation
+ * Builds a dynamic style guide based on narrator and story context
  * Optimized for Pollinations.ai - short keywords for faster generation
  */
-const STYLE_KEYWORDS = 'fantasy RPG art, D&D style, painterly, dramatic lighting';
+function getStyleGuide(narratorTone?: string, storyGenre?: string): string {
+  // Import at runtime to avoid circular dependencies
+  const NarratorManager = require('./narratorManager').NarratorManager;
 
-/**
- * Builds the style guide string (now concise)
- */
-function getStyleGuide(): string {
-  return STYLE_KEYWORDS;
+  // Get active narrator context
+  const activeNarrator = NarratorManager.getActiveNarrator();
+  const tone = narratorTone || activeNarrator.tone;
+  const personality = activeNarrator.personality;
+
+  // Map narrative tones to visual styles
+  const toneStyles: Record<string, string> = {
+    'dark': 'dark fantasy, gothic, shadows',
+    'horror': 'horror art, terrifying, dark atmosphere',
+    'grim': 'grim dark, noir, moody',
+    'mysterious': 'mysterious, mystical, ethereal',
+    'noir': 'film noir, black and white, dramatic shadows',
+    'dramatic': 'dramatic, epic, cinematic',
+    'heroic': 'heroic fantasy, epic, bright',
+    'epic': 'epic fantasy, grand scale, majestic',
+    'light': 'bright fantasy, colorful, cheerful',
+    'humorous': 'whimsical, cartoonish, playful',
+    'comedy': 'cartoon style, funny, exaggerated',
+    'wholesome': 'cozy, warm, inviting',
+    'upbeat': 'vibrant, energetic, colorful',
+    'sarcastic': 'stylized, comic book, bold colors',
+    'chaotic': 'surreal, chaotic, wild colors',
+  };
+
+  // Map story genres to visual themes
+  const genreStyles: Record<string, string> = {
+    'fantasy': 'fantasy art, magical',
+    'scifi': 'sci-fi, futuristic, tech',
+    'sci-fi': 'sci-fi, futuristic, tech',
+    'cyberpunk': 'cyberpunk, neon, dystopian',
+    'steampunk': 'steampunk, Victorian, brass',
+    'horror': 'horror, dark, ominous',
+    'mystery': 'detective noir, mysterious',
+    'western': 'western, dusty, frontier',
+    'medieval': 'medieval, knights, castles',
+    'modern': 'modern, contemporary, realistic',
+    'space': 'space opera, cosmic, stars',
+  };
+
+  // Extract style from tone and personality
+  let visualStyle = '';
+
+  // Check tone
+  for (const [key, style] of Object.entries(toneStyles)) {
+    if (tone.toLowerCase().includes(key)) {
+      visualStyle = style;
+      break;
+    }
+  }
+
+  // Check personality if no tone match
+  if (!visualStyle) {
+    for (const [key, style] of Object.entries(toneStyles)) {
+      if (personality.toLowerCase().includes(key)) {
+        visualStyle = style;
+        break;
+      }
+    }
+  }
+
+  // Check story genre
+  let genreStyle = '';
+  if (storyGenre) {
+    for (const [key, style] of Object.entries(genreStyles)) {
+      if (storyGenre.toLowerCase().includes(key)) {
+        genreStyle = style;
+        break;
+      }
+    }
+  }
+
+  // Default to generic if no matches
+  if (!visualStyle && !genreStyle) {
+    visualStyle = 'painterly, dramatic lighting';
+  }
+
+  // Combine styles
+  const combinedStyle = [genreStyle, visualStyle]
+    .filter(s => s)
+    .join(', ') || 'painterly art, dramatic lighting';
+
+  return combinedStyle;
 }
 
 /**
@@ -143,12 +222,14 @@ export function generateSceneImageUrl(
  * @param sceneType - The type of scene (intro, challenge, resolution)
  * @param description - The narrative description
  * @param setting - Optional setting/environment details
+ * @param genre - Optional story genre for context
  * @returns Concise prompt optimized for Pollinations.ai
  */
 export function createSceneImagePrompt(
   sceneType: string,
   description: string,
-  _setting?: string
+  _setting?: string,
+  genre?: string
 ): string {
   // Keep description VERY short - 60 chars max for fast generation
   const shortDesc = description.length > 60
@@ -162,9 +243,12 @@ export function createSceneImagePrompt(
     ? 'victory'
     : 'adventure';
 
-  // Combine: [type] [short description], [style]
-  // Format: "battle tavern brawl, fantasy RPG art, D&D style, painterly, dramatic lighting"
-  return `${typeContext} ${shortDesc}, ${getStyleGuide()}`;
+  // Get dynamic style based on narrator and genre
+  const styleGuide = getStyleGuide(undefined, genre);
+
+  // Combine: [type] [short description], [dynamic style]
+  // Format: "battle tavern brawl, cyberpunk, neon, dystopian" or "adventure forest path, dark fantasy, gothic, shadows"
+  return `${typeContext} ${shortDesc}, ${styleGuide}`;
 }
 
 /**

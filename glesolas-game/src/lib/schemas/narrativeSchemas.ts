@@ -14,7 +14,7 @@ export const introSceneSchema = z.object({
     .string()
     .min(50, 'Intro scene too short')
     .max(500, 'Intro scene too long')
-    .describe('A brief, humorous 2-3 sentence intro that incorporates the character, item, and location cards'),
+    .describe('A brief 2-3 sentence intro that incorporates the character, item, and location cards'),
   mood: z
     .enum(['humorous', 'dramatic', 'mysterious', 'chaotic'])
     .nullable()
@@ -71,7 +71,7 @@ export const challengeSchema = z.object({
     .string()
     .min(30, 'Challenge too short')
     .max(300, 'Challenge too long')
-    .describe('A humorous 1-2 sentence obstacle that flows from the story and requires might, fortune, or cunning to overcome'),
+    .describe('A 1-2 sentence obstacle that flows from the story and requires might, fortune, or cunning to overcome'),
   might_req: z
     .number()
     .int()
@@ -130,7 +130,7 @@ export const cardSchema = z.object({
     .string()
     .min(10, 'Flavor text too short')
     .max(200, 'Flavor text too long')
-    .describe('A witty, flavorful description of the card (1-2 sentences)'),
+    .describe('A flavorful description of the card (1-2 sentences)'),
   might: z
     .number()
     .int()
@@ -191,7 +191,7 @@ export const companionDialogueSchema = z.object({
     .string()
     .min(20, 'Flavor too short')
     .max(150, 'Flavor too long')
-    .describe('Witty flavor text that references how they were defeated and their personality'),
+    .describe('Flavor text that references how they were defeated and their personality'),
   dialogue: z.object({
     onPlay: z
       .array(z.string().max(100))
@@ -217,3 +217,42 @@ export const companionDialogueSchema = z.object({
 });
 
 export type CompanionDialogue = z.infer<typeof companionDialogueSchema>;
+
+/**
+ * Schema for AI-generated narrator presets
+ * Creates a complete narrator personality from a user prompt
+ */
+export const narratorGenerationSchema = z.object({
+  name: z
+    .string()
+    .min(3, 'Name too short')
+    .max(50, 'Name too long')
+    .describe('A creative name for the narrator that matches their personality'),
+  description: z
+    .string()
+    .min(10, 'Description too short')
+    .max(150, 'Description too long')
+    .describe('A brief description of the narrator\'s style and approach'),
+  personality: z
+    .string()
+    .min(5, 'Personality too short')
+    .max(100, 'Personality too long')
+    .describe('The narrator\'s core personality traits (e.g., "mysterious and enigmatic")'),
+  tone: z
+    .string()
+    .min(5, 'Tone too short')
+    .max(100, 'Tone too long')
+    .describe('The emotional tone they use (e.g., "dark and foreboding", "upbeat and encouraging")'),
+  style: z
+    .string()
+    .min(5, 'Style too short')
+    .max(100, 'Style too long')
+    .describe('Their narrative style (e.g., "concise and punchy", "flowing and descriptive")'),
+  systemPrompt: z
+    .string()
+    .min(50, 'System prompt too short')
+    .max(800, 'System prompt too long')
+    .describe('The complete AI system prompt that defines how they narrate stories'),
+});
+
+export type GeneratedNarrator = z.infer<typeof narratorGenerationSchema>;

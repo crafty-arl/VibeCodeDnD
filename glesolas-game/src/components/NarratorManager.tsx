@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Edit, Trash2, Check, X, Mic, Sparkles } from 'lucide-react';
+import { Plus, Edit, Trash2, Check, X, Mic, Sparkles, Wand2 } from 'lucide-react';
 import { NarratorManager, type NarratorPreset } from '../lib/narratorManager';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
+import { generateNarratorFromPrompt, isAIAvailable } from '../lib/aiService';
 // Removed unused Tabs imports
 
 interface NarratorManagerProps {
@@ -17,10 +18,50 @@ export function NarratorManagerComponent({ isOpen = true, onClose }: NarratorMan
   const [activeNarratorId, setActiveNarratorIdState] = useState(NarratorManager.getActiveNarratorId());
   const [editingNarrator, setEditingNarrator] = useState<NarratorPreset | null>(null);
   const [showNarratorEditor, setShowNarratorEditor] = useState(false);
+  const [showAIGenerator, setShowAIGenerator] = useState(false);
 
   const handleCreateNarrator = () => {
     setEditingNarrator(null);
     setShowNarratorEditor(true);
+  };
+
+  const handleAIGenerateNarrator = async (prompt: string) => {
+    const generatedNarrator = await generateNarratorFromPrompt(prompt);
+    if (generatedNarrator) {
+      const newNarrator: NarratorPreset = {
+        id: `narrator_${Date.now()}`,
+        name: generatedNarrator.name,
+        description: generatedNarrator.description,
+        personality: generatedNarrator.personality,
+        tone: generatedNarrator.tone,
+        style: generatedNarrator.style,
+        systemPrompt: generatedNarrator.systemPrompt,
+        voice: 'george' as const,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      // Save the narrator immediately
+      NarratorManager.createNarrator(
+        newNarrator.name,
+        newNarrator.description,
+        newNarrator.personality,
+        newNarrator.tone,
+        newNarrator.style,
+        newNarrator.systemPrompt
+      );
+
+      // Refresh the list and close the generator
+      setNarrators(NarratorManager.getAllNarrators());
+      setShowAIGenerator(false);
+
+      // Optionally, set as active narrator
+      const savedNarrator = NarratorManager.getAllNarrators().find(n => n.name === newNarrator.name);
+      if (savedNarrator) {
+        NarratorManager.setActiveNarrator(savedNarrator.id);
+        setActiveNarratorIdState(savedNarrator.id);
+      }
+    }
   };
 
   const handleEditNarrator = (narrator: NarratorPreset) => {
@@ -130,11 +171,26 @@ export function NarratorManagerComponent({ isOpen = true, onClose }: NarratorMan
             <p className="text-sm text-muted-foreground">
               Choose the narrator's personality and style for your adventures.
             </p>
-            <Button onClick={handleCreateNarrator} size="sm" className="gap-2">
-              <Plus className="w-4 h-4" />
-              New Narrator
-            </Button>
+            <div className="flex gap-2">
+              {isAIAvailable() && (
+                <Button onClick={() => setShowAIGenerator(true)} size="sm" className="gap-2" variant="outline">
+                  <Wand2 className="w-4 h-4" />
+                  AI Generate
+                </Button>
+              )}
+              <Button onClick={handleCreateNarrator} size="sm" className="gap-2">
+                <Plus className="w-4 h-4" />
+                New Narrator
+              </Button>
+            </div>
           </div>
+
+          {showAIGenerator && (
+            <AIGeneratorPrompt
+              onGenerate={handleAIGenerateNarrator}
+              onCancel={() => setShowAIGenerator(false)}
+            />
+          )}
 
           <div className="space-y-3">
             {narrators.map((narrator) => (
@@ -381,5 +437,79 @@ function NarratorEditor({ narrator, onSave, onCancel }: NarratorEditorProps) {
         </CardContent>
       </Card>
     </motion.div>
+  );
+}
+
+interface AIGeneratorPromptProps {
+  onGenerate: (prompt: string) => void;
+  onCancel: () => void;
+}
+
+function AIGeneratorPrompt({ onGenerate, onCancel }: AIGeneratorPromptProps) {
+  const [prompt, setPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleGenerate = async () => {
+    if (!prompt.trim()) return;
+
+    setIsGenerating(true);
+    await onGenerate(prompt);
+    setIsGenerating(false);
+  };
+
+  return (
+    <Card className="border-primary/50 bg-primary/5">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start gap-2">
+          <Wand2 className="w-5 h-5 mt-1 text-primary" />
+          <div className="flex-1 space-y-2">
+            <h4 className="font-semibold">AI Generate Narrator</h4>
+            <p className="text-sm text-muted-foreground">
+              Describe the narrator you want and AI will create their personality, tone, and style.
+            </p>
+            <Input
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="e.g., 'a mysterious fortune teller who speaks in cryptic riddles' or 'an overly enthusiastic sports commentator'"
+              className="bg-background"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !isGenerating) {
+                  handleGenerate();
+                }
+              }}
+            />
+            <div className="flex gap-2 pt-2">
+              <Button
+                onClick={handleGenerate}
+                disabled={!prompt.trim() || isGenerating}
+                size="sm"
+                className="flex-1"
+              >
+                {isGenerating ? (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      className="mr-2"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                    </motion.div>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Generate
+                  </>
+                )}
+              </Button>
+              <Button onClick={onCancel} variant="outline" size="sm">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
