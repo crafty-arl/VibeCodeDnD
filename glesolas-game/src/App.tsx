@@ -563,7 +563,7 @@ function App() {
     // Offer companion recruitment on perfect victories (key stat used)
     if (success && wasKeyStat && currentChallenge) {
       const { CompanionManager } = await import('./lib/companionManager');
-      const newCompanion = CompanionManager.createCompanionFromEncounter(
+      const newCompanion = await CompanionManager.createCompanionFromEncounter(
         currentChallenge,
         chosenPath,
         playerProfile.level

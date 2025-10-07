@@ -2,7 +2,8 @@ import OpenAI from 'openai';
 import { jsonrepair } from 'jsonrepair';
 import type { ZodSchema } from 'zod';
 import { NarratorManager } from './narratorManager';
-import { deckGenerationSchema, type GeneratedDeck } from './schemas/narrativeSchemas';
+import { deckGenerationSchema, type GeneratedDeck, companionDialogueSchema, type CompanionDialogue } from './schemas/narrativeSchemas';
+import type { SkillPath } from '@/types/game';
 
 /**
  * AI Service for narrative generation using OpenRouter
@@ -373,6 +374,50 @@ Generate a deck name and description that captures the ${theme} theme, then crea
   return generateStructured<GeneratedDeck>(prompt, deckGenerationSchema, {
     temperature: 0.9,
     maxTokens: 4000,
+  });
+}
+
+/**
+ * Generate companion dialogue based on encounter context
+ * Creates unique name, flavor text, and contextual dialogue for recruited companions
+ */
+export async function generateCompanionDialogue(
+  enemyName: string,
+  encounterScene: string,
+  defeatedVia: SkillPath
+): Promise<CompanionDialogue | null> {
+  if (!isAIAvailable() || !STRUCTURED_OUTPUT_ENABLED) {
+    return null;
+  }
+
+  const defeatMethod = defeatedVia === 'might' ? 'physical combat' :
+                       defeatedVia === 'cunning' ? 'clever tactics' :
+                       'fortunate circumstances';
+
+  const prompt = `You just defeated a ${enemyName} in this encounter: "${encounterScene}"
+
+You defeated them through ${defeatMethod} (${defeatedVia}).
+
+Now they respect your prowess and want to join you as a companion!
+
+Create a unique companion character with:
+1. A creative name that fits the ${enemyName} character type (avoid generic "Reformed" or "The" prefix)
+2. Witty flavor text (1-2 sentences) that references the specific encounter and their personality
+3. Contextual dialogue that shows their character and remembers how they were defeated
+
+The dialogue should be:
+- Specific to this encounter (reference elements from the scene)
+- Show their personality evolving from defeated enemy to loyal companion
+- Match the tone of a humorous tabletop gaming experience
+- Reference their preferred combat style (${defeatedVia})
+
+Keep all dialogue concise and punchy!`;
+
+  console.log(`🎭 Generating companion dialogue for ${enemyName} defeated via ${defeatedVia}`);
+
+  return generateStructured<CompanionDialogue>(prompt, companionDialogueSchema, {
+    temperature: 0.8,
+    maxTokens: 500,
   });
 }
 

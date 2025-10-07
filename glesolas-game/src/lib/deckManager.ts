@@ -27,6 +27,48 @@ const createDefaultDeck = (): Deck => ({
 });
 
 export class DeckManager {
+  /**
+   * Migrates existing AI-generated Character cards to include companion properties
+   */
+  static migrateCharacterCards(card: LoreCard): LoreCard {
+    // If it's not a Character card, return as-is
+    if (card.type !== 'Character') {
+      return card;
+    }
+
+    // If it already has companion properties, return as-is
+    if (card.preferredPath && card.dialogue) {
+      return card;
+    }
+
+    // Determine preferred path based on highest stat
+    let preferredPath: 'might' | 'fortune' | 'cunning';
+    if (card.stats.might >= card.stats.fortune && card.stats.might >= card.stats.cunning) {
+      preferredPath = 'might';
+    } else if (card.stats.fortune >= card.stats.cunning) {
+      preferredPath = 'fortune';
+    } else {
+      preferredPath = 'cunning';
+    }
+
+    // Add companion properties
+    return {
+      ...card,
+      preferredPath,
+      dialogue: {
+        onPlay: [`Ready to assist!`, `Let's do this together.`],
+        onWin: [`Victory!`, `We did it!`],
+        onLose: [`We'll get them next time.`, `That was tough...`],
+        onKeyStat: [`Perfect execution!`, `Just as planned!`],
+        onNonKeyStat: [`We won, but that was risky.`, `Not my preferred approach.`],
+      },
+      loyalty: card.loyalty ?? 0,
+      timesPlayed: card.timesPlayed ?? 0,
+      encountersWon: card.encountersWon ?? 0,
+      encountersLost: card.encountersLost ?? 0,
+    };
+  }
+
   static getAllDecks(): Deck[] {
     const stored = localStorage.getItem(DECKS_KEY);
     if (!stored) {
@@ -36,7 +78,33 @@ export class DeckManager {
       return [defaultDeck];
     }
     try {
-      return JSON.parse(stored);
+      const decks: Deck[] = JSON.parse(stored);
+
+      // Migrate Character cards in all decks
+      let needsMigration = false;
+      const migratedDecks = decks.map(deck => {
+        const migratedCards = deck.cards.map(card => {
+          const migrated = this.migrateCharacterCards(card);
+          if (migrated !== card) {
+            needsMigration = true;
+          }
+          return migrated;
+        });
+
+        return {
+          ...deck,
+          cards: migratedCards,
+        };
+      });
+
+      // Save if any cards were migrated
+      if (needsMigration) {
+        console.log('🔄 Migrated Character cards with companion properties');
+        this.saveDecks(migratedDecks);
+        return migratedDecks;
+      }
+
+      return decks;
     } catch {
       return [createDefaultDeck()];
     }

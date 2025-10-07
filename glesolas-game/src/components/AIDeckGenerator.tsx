@@ -49,10 +49,24 @@ export function AIDeckGenerator({ onSave, onCancel }: AIDeckGeneratorProps) {
         const imagePrompt = `${card.name}, ${theme} theme, ${card.type}, fantasy card game art, detailed illustration, vibrant colors`;
         const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=512&height=512&nologo=true`;
 
-        return {
+        const cardType = card.type === 'character' ? 'Character' : card.type === 'item' ? 'Item' : 'Location';
+
+        // Determine preferred path for Character cards based on highest stat
+        let preferredPath: 'might' | 'fortune' | 'cunning' | undefined;
+        if (cardType === 'Character') {
+          if (card.might >= card.fortune && card.might >= card.cunning) {
+            preferredPath = 'might';
+          } else if (card.fortune >= card.cunning) {
+            preferredPath = 'fortune';
+          } else {
+            preferredPath = 'cunning';
+          }
+        }
+
+        const baseCard = {
           id: `ai-${Date.now()}-${index}`,
           name: card.name,
-          type: card.type === 'character' ? 'Character' : card.type === 'item' ? 'Item' : 'Location',
+          type: cardType,
           flavor: card.flavor,
           rarity: 'Common' as const,
           stats: {
@@ -62,6 +76,27 @@ export function AIDeckGenerator({ onSave, onCancel }: AIDeckGeneratorProps) {
           },
           art: imageUrl,
         };
+
+        // Add companion properties for Character cards
+        if (cardType === 'Character' && preferredPath) {
+          return {
+            ...baseCard,
+            preferredPath,
+            dialogue: {
+              onPlay: [`Ready to assist!`, `Let's do this together.`],
+              onWin: [`Victory!`, `We did it!`],
+              onLose: [`We'll get them next time.`, `That was tough...`],
+              onKeyStat: [`Perfect execution!`, `Just as planned!`],
+              onNonKeyStat: [`We won, but that was risky.`, `Not my preferred approach.`],
+            },
+            loyalty: 0,
+            timesPlayed: 0,
+            encountersWon: 0,
+            encountersLost: 0,
+          };
+        }
+
+        return baseCard;
       });
 
       setGeneratedDeck({

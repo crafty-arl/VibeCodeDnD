@@ -109,11 +109,11 @@ export class CompanionManager {
     return abilities;
   }
 
-  static createCompanionFromEncounter(
+  static async createCompanionFromEncounter(
     challenge: SkillCheck,
     winningPath: SkillPath,
     playerLevel: number
-  ): LoreCard {
+  ): Promise<LoreCard> {
     const enemyName = this.extractEnemyName(challenge.scene);
 
     const baseStats: CardStats = {
@@ -124,19 +124,40 @@ export class CompanionManager {
 
     baseStats[winningPath] += 3;
 
+    // Generate AI flavor text and dialogue based on the encounter
+    const { generateCompanionDialogue } = await import('./aiService');
+    const companionData = await generateCompanionDialogue(
+      enemyName,
+      challenge.scene,
+      winningPath
+    );
+
+    // Generate companion card image (Pollinations first for speed)
+    const { generateSceneImageUrl, createSceneImagePrompt } = await import('./imageService');
+    const imagePrompt = createSceneImagePrompt('character', `${enemyName} fantasy character portrait`, '');
+
+    // Use Pollinations (fast and free)
+    const artUrl = generateSceneImageUrl(imagePrompt, {
+      model: 'flux',
+      width: 512,
+      height: 512,
+      nologo: true
+    });
+
     return {
       id: `recruited_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      name: `${enemyName} (Reformed)`,
+      name: companionData?.name || `${enemyName} (Reformed)`,
       type: 'Character',
       stats: baseStats,
       rarity: playerLevel >= 10 ? 'Rare' : 'Uncommon',
-      flavor: `Defeated via ${winningPath}. Remembers your prowess.`,
+      flavor: companionData?.flavor || `Defeated via ${winningPath}. Remembers your prowess.`,
+      art: artUrl,
       loyalty: 100,
       preferredPath: winningPath,
       timesPlayed: 0,
       encountersWon: 0,
       encountersLost: 0,
-      dialogue: {
+      dialogue: companionData?.dialogue || {
         onPlay: [
           `I still remember when you ${
             winningPath === 'might' ? 'crushed' : winningPath === 'cunning' ? 'outwitted' : 'outmaneuvered'

@@ -222,26 +222,80 @@ export function LoreCardComponent({ card, selected, onClick, disabled }: LoreCar
                   </div>
 
                   {isCompanion && loyaltyTier && (
-                    <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg space-y-2">
+                    <div className="p-4 bg-primary/10 border border-primary/30 rounded-lg space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Heart className={`w-4 h-4 ${tierColors[loyaltyTier as keyof typeof tierColors]}`} />
-                          <span className="text-sm font-semibold">Loyalty</span>
+                          <Heart className={`w-5 h-5 ${tierColors[loyaltyTier as keyof typeof tierColors]}`} />
+                          <span className="text-sm font-semibold">Companion Relationship</span>
                         </div>
-                        <span className={`text-lg font-bold ${tierColors[loyaltyTier as keyof typeof tierColors]}`}>
-                          {loyalty}
-                        </span>
                       </div>
-                      <div className="text-xs">
-                        <span className={`font-medium capitalize ${tierColors[loyaltyTier as keyof typeof tierColors]}`}>
-                          {loyaltyTier}
-                        </span>
-                        {loyaltyBonus && (loyaltyBonus.might > 0 || loyaltyBonus.fortune > 0 || loyaltyBonus.cunning > 0) && (
-                          <span className="text-muted-foreground ml-2">
-                            • Bonus: +{loyaltyBonus.might}/{loyaltyBonus.fortune}/{loyaltyBonus.cunning}
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">Loyalty</span>
+                          <span className={`text-xl font-bold ${tierColors[loyaltyTier as keyof typeof tierColors]}`}>
+                            {loyalty}
                           </span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">Tier</span>
+                          <span className={`text-sm font-semibold capitalize ${tierColors[loyaltyTier as keyof typeof tierColors]}`}>
+                            {loyaltyTier}
+                          </span>
+                        </div>
+
+                        {card.timesPlayed !== undefined && card.timesPlayed > 0 && (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Times Played</span>
+                              <span className="text-sm font-mono">{card.timesPlayed}</span>
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Wins / Losses</span>
+                              <span className="text-sm font-mono">
+                                <span className="text-green-400">{card.encountersWon || 0}</span>
+                                {' / '}
+                                <span className="text-red-400">{card.encountersLost || 0}</span>
+                              </span>
+                            </div>
+
+                            {card.preferredPath && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground">Preferred Path</span>
+                                <span className="text-sm font-medium capitalize text-primary">{card.preferredPath}</span>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
+
+                      {loyaltyBonus && (loyaltyBonus.might > 0 || loyaltyBonus.fortune > 0 || loyaltyBonus.cunning > 0) && (
+                        <div className="pt-2 border-t border-primary/20">
+                          <div className="text-xs text-muted-foreground mb-1">Active Bonuses</div>
+                          <div className="flex gap-3 text-sm">
+                            {loyaltyBonus.might > 0 && (
+                              <div className="flex items-center gap-1">
+                                <Swords className="w-3 h-3 text-red-400" />
+                                <span className="text-green-400">+{loyaltyBonus.might}</span>
+                              </div>
+                            )}
+                            {loyaltyBonus.fortune > 0 && (
+                              <div className="flex items-center gap-1">
+                                <Dices className="w-3 h-3 text-green-400" />
+                                <span className="text-green-400">+{loyaltyBonus.fortune}</span>
+                              </div>
+                            )}
+                            {loyaltyBonus.cunning > 0 && (
+                              <div className="flex items-center gap-1">
+                                <Sparkles className="w-3 h-3 text-blue-400" />
+                                <span className="text-green-400">+{loyaltyBonus.cunning}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 

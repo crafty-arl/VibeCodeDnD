@@ -176,3 +176,44 @@ export const deckGenerationSchema = z.object({
 });
 
 export type GeneratedDeck = z.infer<typeof deckGenerationSchema>;
+
+/**
+ * Schema for companion dialogue generation
+ * Creates contextual name, flavor text, and dialogue for recruited companions
+ */
+export const companionDialogueSchema = z.object({
+  name: z
+    .string()
+    .min(3, 'Name too short')
+    .max(50, 'Name too long')
+    .describe('A unique character name based on the encounter (avoid generic "Reformed" suffix)'),
+  flavor: z
+    .string()
+    .min(20, 'Flavor too short')
+    .max(150, 'Flavor too long')
+    .describe('Witty flavor text that references how they were defeated and their personality'),
+  dialogue: z.object({
+    onPlay: z
+      .array(z.string().max(100))
+      .length(2)
+      .describe('2 lines referencing the specific encounter when played'),
+    onWin: z
+      .array(z.string().max(100))
+      .length(2)
+      .describe('2 victory lines showing their personality'),
+    onLose: z
+      .array(z.string().max(100))
+      .length(2)
+      .describe('2 defeat lines reflecting on failure'),
+    onKeyStat: z
+      .array(z.string().max(100))
+      .length(2)
+      .describe('2 approval lines when their preferred path is used'),
+    onNonKeyStat: z
+      .array(z.string().max(100))
+      .length(2)
+      .describe('2 skeptical lines when a different path is used'),
+  }).describe('Contextual dialogue for different scenarios'),
+});
+
+export type CompanionDialogue = z.infer<typeof companionDialogueSchema>;

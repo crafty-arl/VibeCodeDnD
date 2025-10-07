@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Edit, Trash2, Check, X, Layers, Sparkles } from 'lucide-react';
+import { Plus, Edit, Trash2, Check, X, Layers, Sparkles, Dices } from 'lucide-react';
 import type { LoreCard } from '../types/game';
 import { LORE_DECK } from '../data/cards';
 import { DeckManager, type Deck } from '../lib/deckManager';
@@ -348,6 +348,13 @@ function DeckEditor({ deck, onSave, onCancel }: DeckEditorProps) {
     });
   };
 
+  const handleRandomSelect = () => {
+    // Shuffle the available cards and pick 35
+    const shuffled = [...allAvailableCards].sort(() => Math.random() - 0.5);
+    const randomSelection = shuffled.slice(0, 35);
+    setSelectedCards(randomSelection);
+  };
+
   const handleSave = () => {
     if (!deckName.trim() || selectedCards.length === 0) return;
 
@@ -444,9 +451,23 @@ function DeckEditor({ deck, onSave, onCancel }: DeckEditorProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Selected Cards ({selectedCards.length})
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">
+                Selected Cards ({selectedCards.length})
+              </label>
+              {!isAIGeneratedDeck && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRandomSelect}
+                  disabled={allAvailableCards.length < 35}
+                  className="gap-2"
+                >
+                  <Dices className="w-4 h-4" />
+                  Random 35
+                </Button>
+              )}
+            </div>
 
             {isAIGeneratedDeck && (
               <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm">
