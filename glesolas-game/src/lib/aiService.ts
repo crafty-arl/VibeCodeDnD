@@ -395,6 +395,8 @@ export async function generateCompanionDialogue(
   defeatedVia: SkillPath
 ): Promise<CompanionDialogue | null> {
   if (!isAIAvailable() || !STRUCTURED_OUTPUT_ENABLED) {
+    console.warn('⚠️ generateCompanionDialogue: AI not available or structured output disabled');
+    console.log('AI available:', isAIAvailable(), 'Structured enabled:', STRUCTURED_OUTPUT_ENABLED);
     return null;
   }
 
@@ -416,27 +418,35 @@ They defeated them through ${defeatMethod} (${defeatedVia}).
 
 Now the defeated character respects the player's prowess and wants to join as a companion!
 
-Create a unique companion character with:
-1. Extract the actual character name from the scene (or create one that fits the character in the scene)
-2. Flavor text (1-2 sentences) that references the specific encounter and their personality in YOUR narrative style
-3. Contextual dialogue that shows their character and remembers how they were defeated
+CRITICAL REQUIREMENTS:
+- "name": string (3-50 chars) - Extract actual character name from scene, avoid generic "Reformed X"
+- "flavor": string (20-140 chars MAX!) - Brief reference to encounter and personality
+- "dialogue": MUST be an object (not string!) with these exact 5 keys:
+  - "onPlay": array of exactly 2 strings (each max 100 chars) - References this specific encounter
+  - "onWin": array of exactly 2 strings (each max 100 chars) - Victory lines
+  - "onLose": array of exactly 2 strings (each max 100 chars) - Defeat lines
+  - "onKeyStat": array of exactly 2 strings (each max 100 chars) - Approval when ${defeatedVia} is used
+  - "onNonKeyStat": array of exactly 2 strings (each max 100 chars) - Skepticism when other paths used
 
-The dialogue should:
-- Be specific to this encounter (reference elements from the scene and the actual character's name)
-- Show their personality evolving from defeated enemy to loyal companion
-- Match YOUR tone and style as the DM
-- Reference their preferred combat style (${defeatedVia})
-
-IMPORTANT: Extract the actual character name from the scene text, don't use generic types like "Bandit" or "Dragon".
-
-Keep all dialogue concise and in YOUR voice as the DM!`;
+CRITICAL: Keep flavor under 140 characters! Dialogue must be an object with arrays, not a string!`;
 
   console.log(`🎭 Generating companion dialogue for encounter defeated via ${defeatedVia}`);
 
-  return generateStructured<CompanionDialogue>(prompt, companionDialogueSchema, {
-    temperature: 0.8,
-    maxTokens: 500,
-  });
+  try {
+    const result = await generateStructured<CompanionDialogue>(prompt, companionDialogueSchema, {
+      temperature: 0.7,
+      maxTokens: 600,
+    });
+
+    if (!result) {
+      console.error('❌ generateCompanionDialogue returned null from generateStructured');
+    }
+
+    return result;
+  } catch (error) {
+    console.error('❌ Error in generateCompanionDialogue:', error);
+    return null;
+  }
 }
 
 /**

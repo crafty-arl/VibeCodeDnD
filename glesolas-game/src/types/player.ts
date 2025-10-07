@@ -43,6 +43,10 @@ export interface PlayerProfile {
 
   // Companion collection
   collectedCompanions?: string[]; // Card IDs
+
+  // Chapter progression
+  currentChapter?: number; // Current chapter of the adventure (starts at 1)
+  cardsDrawnThisChapter?: number; // Track how many cards drawn to know when to reshuffle
 }
 
 export interface Injury {

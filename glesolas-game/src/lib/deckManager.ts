@@ -209,16 +209,36 @@ export class DeckManager {
     }
   }
 
-  static drawRandomCards(count: number, exclude: string[] = []): LoreCard[] {
+  static drawRandomCards(count: number, exclude: string[] = [], usedCardIds: string[] = []): LoreCard[] {
     const activeDeck = this.getActiveDeck();
-    const availableCards = activeDeck.cards.filter(card => !exclude.includes(card.id));
+
+    // First try to draw from cards not yet used this chapter
+    let availableCards = activeDeck.cards.filter(card =>
+      !exclude.includes(card.id) && !usedCardIds.includes(card.id)
+    );
+
+    // If not enough cards available (deck exhausted), reshuffle and allow reuse
+    if (availableCards.length < count) {
+      console.log('🔄 Deck exhausted! Reshuffling for new chapter...');
+      availableCards = activeDeck.cards.filter(card => !exclude.includes(card.id));
+      // Return indicator that deck was reshuffled
+      (availableCards as any).__deckReshuffled = true;
+    }
+
     const shuffled = [...availableCards].sort(() => Math.random() - 0.5);
     const drawnCards = shuffled.slice(0, count);
 
     // Enrich Character cards with companion data
-    return drawnCards.map(card =>
+    const enrichedCards = drawnCards.map(card =>
       card.type === 'Character' ? CompanionManager.enrichCard(card) : card
     );
+
+    // Preserve reshuffle flag
+    if ((availableCards as any).__deckReshuffled) {
+      (enrichedCards as any).__deckReshuffled = true;
+    }
+
+    return enrichedCards;
   }
 
   static async addCardToActiveDeck(card: LoreCard): Promise<void> {

@@ -91,5 +91,6 @@ export interface ActionPath {
   path: SkillPath;
   narrative: string;
   unlocked: boolean;
+  successChance?: number; // Percentage chance of success (0-100)
   isTotalFailure?: boolean; // True when all paths failed (choose your doom)
 }

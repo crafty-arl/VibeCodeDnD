@@ -75,6 +75,7 @@ interface ActionSheetButtonProps {
   description?: string;
   icon?: ReactNode;
   variant?: 'default' | 'destructive' | 'outline';
+  successChance?: number;
 }
 
 export function ActionSheetButton({
@@ -84,7 +85,8 @@ export function ActionSheetButton({
   title,
   description,
   icon,
-  variant = 'default'
+  variant = 'default',
+  successChance
 }: ActionSheetButtonProps) {
   return (
     <Button
@@ -96,9 +98,21 @@ export function ActionSheetButton({
       <div className="flex items-start gap-3 w-full">
         {icon && <div className="flex-shrink-0 mt-1">{icon}</div>}
         <div className="space-y-1 flex-1">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <span className="font-bold text-base">{title}</span>
-            {locked && <span className="text-xs text-destructive">🔒 Locked</span>}
+            {locked ? (
+              <span className="text-xs text-destructive font-semibold">🔒 Locked</span>
+            ) : successChance !== undefined ? (
+              <span className={`text-sm font-bold font-mono px-3 py-1.5 rounded-md border text-black ${
+                successChance >= 100 ? 'bg-green-400 border-green-500' :
+                successChance >= 75 ? 'bg-green-300 border-green-400' :
+                successChance >= 50 ? 'bg-yellow-300 border-yellow-400' :
+                successChance >= 25 ? 'bg-orange-300 border-orange-400' :
+                'bg-red-300 border-red-400'
+              }`}>
+                {successChance}%
+              </span>
+            ) : null}
           </div>
           {description && (
             <p className={`text-sm whitespace-normal ${locked ? 'text-muted-foreground' : 'text-primary-foreground'}`}>

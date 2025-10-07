@@ -154,7 +154,7 @@ export function SceneImage({
             <p className="text-sm text-muted-foreground">Image failed to load</p>
           </div>
         </div>
-      ) : (
+      ) : imageUrl ? (
         <img
           src={imageUrl}
           alt="Scene illustration"
@@ -163,7 +163,7 @@ export function SceneImage({
           onError={handleImageError}
           loading="lazy"
         />
-      )}
+      ) : null}
 
       {/* Optional: Overlay for better text readability */}
       <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent pointer-events-none" />

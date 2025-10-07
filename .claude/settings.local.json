@@ -41,7 +41,10 @@
       "Bash(dir /s /b \"C:\\Users\\aaron\\Documents\\VibeCodeDnD\\glesolas-game\\src\\types\")",
       "Bash(timeout 20 npx tsc --noEmit)",
       "Bash(ping:*)",
-      "Bash(npm run deploy:*)"
+      "Bash(npm run deploy:*)",
+      "Bash(npx wrangler pages project:*)",
+      "Bash(if exist nul del nul)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

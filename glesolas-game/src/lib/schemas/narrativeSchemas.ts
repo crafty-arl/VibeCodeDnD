@@ -190,7 +190,7 @@ export const companionDialogueSchema = z.object({
   flavor: z
     .string()
     .min(20, 'Flavor too short')
-    .max(150, 'Flavor too long')
+    .max(200, 'Flavor too long')
     .describe('Flavor text that references how they were defeated and their personality'),
   dialogue: z.object({
     onPlay: z

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Trophy, Scroll, Save, FolderOpen, Home } from 'lucide-react';
+import { Trophy, Scroll, Save, FolderOpen, Home, Layers } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Progress } from './ui/progress';
@@ -13,6 +13,8 @@ interface GameHeaderProps {
   phase: GamePhase;
   gameMode?: 'menu' | 'campaign' | 'playground';
   playerProfile?: PlayerProfile;
+  deckSize?: number;
+  currentChapter?: number;
   onEndSession: () => void;
   onSaveSession: () => void;
   onLoadSession: () => void;
@@ -25,6 +27,8 @@ export function GameHeader({
   phase,
   gameMode = 'menu',
   playerProfile,
+  deckSize,
+  currentChapter,
   onEndSession,
   onSaveSession,
   onLoadSession,
@@ -43,7 +47,9 @@ export function GameHeader({
           className="text-center py-2 px-3 sm:py-3 sm:px-4"
         >
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gradient-solar">/quest</h1>
-          <p className="text-muted-foreground text-[10px] sm:text-xs">Forge your legend</p>
+          <p className="text-muted-foreground text-[10px] sm:text-xs">
+            {currentChapter && currentChapter > 1 ? `Chapter ${currentChapter} • ` : ''}Forge your legend
+          </p>
         </motion.div>
 
         {/* Stats Bar - Mobile Optimized */}
@@ -71,6 +77,12 @@ export function GameHeader({
                       <Scroll className="w-3.5 h-3.5 text-accent" />
                       <span className="font-mono font-bold text-xs">{narrativeDice}</span>
                     </div>
+                    {deckSize !== undefined && (
+                      <div className="flex items-center gap-1">
+                        <Layers className="w-3.5 h-3.5 text-blue-400" />
+                        <span className="font-mono font-bold text-xs">{deckSize}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -128,6 +140,13 @@ export function GameHeader({
                     <span className="font-mono font-bold text-sm">{narrativeDice}</span>
                     <span className="text-xs text-muted-foreground hidden lg:inline">Dice</span>
                   </div>
+                  {deckSize !== undefined && (
+                    <div className="flex items-center gap-1.5">
+                      <Layers className="w-4 h-4 text-blue-400" />
+                      <span className="font-mono font-bold text-sm">{deckSize}</span>
+                      <span className="text-xs text-muted-foreground hidden lg:inline">Deck</span>
+                    </div>
+                  )}
                 </div>
 
                 <Progress

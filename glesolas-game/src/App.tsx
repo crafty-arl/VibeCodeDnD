@@ -33,6 +33,7 @@ import {
 import { StoryMemoryManager } from './lib/storyMemory';
 import { GameHeader } from './components/GameHeader';
 import { GameFooter } from './components/GameFooter';
+import { ChapterTransition } from './components/ChapterTransition';
 import { BottomActionSheet, ActionSheetButton } from './components/BottomActionSheet';
 import { ImprovedCardHand } from './components/ImprovedCardHand';
 import { CardPlayArea } from './components/CardPlayArea';
@@ -96,6 +97,10 @@ function App() {
   const [playgroundCards, setPlaygroundCards] = useState<LoreCard[]>([]);
   const [playgroundSelectedCards, setPlaygroundSelectedCards] = useState<LoreCard[]>([]);
   const [isPlaygroundLoading, setIsPlaygroundLoading] = useState(false);
+
+  // Chapter System State
+  const [usedCardIds, setUsedCardIds] = useState<string[]>([]); // Cards drawn this chapter
+  const [showChapterTransition, setShowChapterTransition] = useState(false);
 
   useEffect(() => {
     // Check for auto-save on initial load
@@ -163,6 +168,9 @@ function App() {
     const startingHand = DeckManager.drawRandomCards(3);
     setHand(startingHand);
 
+    // Track cards drawn for chapter system
+    setUsedCardIds(startingHand.map(c => c.id));
+
     // Use all 3 cards for intro scene display
     setActiveCards(startingHand);
 
@@ -183,6 +191,9 @@ function App() {
     // Draw starting hand of 3 cards
     const startingHand = DeckManager.drawRandomCards(3);
     setHand(startingHand);
+
+    // Track cards drawn for chapter system
+    setUsedCardIds(startingHand.map(c => c.id));
 
     // Use all 3 cards for intro scene display
     setActiveCards(startingHand);
@@ -237,7 +248,7 @@ function App() {
   };
 
   const handlePlayResponse = async () => {
-    if (!currentChallenge || selectedCards.length !== playerProfile.playAreaSize) return;
+    if (!currentChallenge || selectedCards.length < 1 || selectedCards.length > playerProfile.playAreaSize) return;
 
     setIsGeneratingNarrative(true);
 
@@ -249,9 +260,15 @@ function App() {
     const fortuneUnlocked = total.fortune >= fortune_req;
     const cunningUnlocked = total.cunning >= cunning_req;
 
+    // Calculate success chance for each path (percentage based on stat/requirement ratio)
+    const mightChance = Math.min(100, Math.floor((total.might / might_req) * 100));
+    const fortuneChance = Math.min(100, Math.floor((total.fortune / fortune_req) * 100));
+    const cunningChance = Math.min(100, Math.floor((total.cunning / cunning_req) * 100));
+
     console.log('🎲 Challenge Requirements:', { might_req, fortune_req, cunning_req });
     console.log('💪 Your Stats:', total);
     console.log('🔓 Unlocked Paths:', { mightUnlocked, fortuneUnlocked, cunningUnlocked });
+    console.log('📊 Success Chances:', { mightChance, fortuneChance, cunningChance });
 
     // Generate AI narratives for ALL paths - each will be validated individually when chosen
     const [mightNarrative, fortuneNarrative, cunningNarrative] = await Promise.all([
@@ -261,9 +278,9 @@ function App() {
     ]);
 
     const actions: ActionPath[] = [
-      { path: 'might', narrative: mightNarrative, unlocked: mightUnlocked },
-      { path: 'fortune', narrative: fortuneNarrative, unlocked: fortuneUnlocked },
-      { path: 'cunning', narrative: cunningNarrative, unlocked: cunningUnlocked },
+      { path: 'might', narrative: mightNarrative, unlocked: mightUnlocked, successChance: mightChance },
+      { path: 'fortune', narrative: fortuneNarrative, unlocked: fortuneUnlocked, successChance: fortuneChance },
+      { path: 'cunning', narrative: cunningNarrative, unlocked: cunningUnlocked, successChance: cunningChance },
     ];
 
     // Deduct narrative dice for all 3 generated narratives
@@ -282,17 +299,28 @@ function App() {
     const total = calculateTotalStats(selectedCards, playerProfile);
     const { might_req, fortune_req, cunning_req } = currentChallenge.requirements;
 
-    // Check if the CHOSEN path meets its requirement
-    let isUnlocked = false;
+    // Get player's stat and required stat for chosen path
+    let playerStat = 0;
+    let requiredStat = 0;
     if (chosenPath === 'might') {
-      isUnlocked = total.might >= might_req;
+      playerStat = total.might;
+      requiredStat = might_req;
     } else if (chosenPath === 'fortune') {
-      isUnlocked = total.fortune >= fortune_req;
+      playerStat = total.fortune;
+      requiredStat = fortune_req;
     } else if (chosenPath === 'cunning') {
-      isUnlocked = total.cunning >= cunning_req;
+      playerStat = total.cunning;
+      requiredStat = cunning_req;
     }
 
-    console.log(`🎯 Chose ${chosenPath} path - Required: ${chosenPath === 'might' ? might_req : chosenPath === 'fortune' ? fortune_req : cunning_req}, You have: ${chosenPath === 'might' ? total.might : chosenPath === 'fortune' ? total.fortune : total.cunning}, Unlocked: ${isUnlocked}`);
+    // Calculate success chance as percentage
+    const successChance = Math.min(100, Math.floor((playerStat / requiredStat) * 100));
+
+    // Determine if attempt succeeds based on percentage roll
+    const roll = Math.random() * 100;
+    const isUnlocked = roll <= successChance;
+
+    console.log(`🎯 Chose ${chosenPath} path - Required: ${requiredStat}, You have: ${playerStat}, Success Chance: ${successChance}%, Roll: ${roll.toFixed(1)}%, Result: ${isUnlocked ? 'SUCCESS' : 'FAIL'}`);
 
     setIsGeneratingNarrative(true);
 
@@ -534,8 +562,27 @@ function App() {
     savePlayerProfile(playerProfile);
 
     // Draw new hand based on player's hand size (excludes previously used cards for variety)
-    const usedCardIds = hand.map(c => c.id);
-    const newHand = DeckManager.drawRandomCards(playerProfile.handSize, usedCardIds);
+    const excludeIds = hand.map(c => c.id);
+    const newHand = DeckManager.drawRandomCards(playerProfile.handSize, excludeIds, usedCardIds) as any;
+
+    // Check if deck was reshuffled (new chapter)
+    if (newHand.__deckReshuffled) {
+      console.log(`📖 Chapter ${(playerProfile.currentChapter || 1) + 1} begins!`);
+      playerProfile.currentChapter = (playerProfile.currentChapter || 1) + 1;
+      playerProfile.cardsDrawnThisChapter = 0;
+      setUsedCardIds([]); // Reset used cards for new chapter
+      setShowChapterTransition(true);
+      savePlayerProfile(playerProfile);
+
+      // Hide chapter transition after 3 seconds
+      setTimeout(() => setShowChapterTransition(false), 3000);
+    }
+
+    // Track cards drawn this chapter
+    const newCardIds = newHand.map((c: LoreCard) => c.id);
+    setUsedCardIds(prev => [...prev, ...newCardIds]);
+    playerProfile.cardsDrawnThisChapter = (playerProfile.cardsDrawnThisChapter || 0) + newHand.length;
+
     setHand(newHand);
 
     // Use all 3 cards for display
@@ -637,12 +684,6 @@ function App() {
     }
     // Otherwise, just close the selector (user was changing difficulty from home screen)
   };
-
-  const handleStartPlaygroundMode = () => {
-    setGameMode('playground');
-    setPlaygroundPhase('setup');
-  };
-
   const handleBackToMenu = () => {
     setGameMode('menu');
     setPhase('home');
@@ -885,6 +926,10 @@ function App() {
     }, 2000);
   };
 
+  // Get active deck size
+  const activeDeck = DeckManager.getActiveDeck();
+  const deckSize = activeDeck.cards.length;
+
   return (
     <div className="mobile-full-height flex flex-col bg-gradient-to-br from-background via-secondary/20 to-background no-overscroll">
       {/* Header */}
@@ -894,10 +939,18 @@ function App() {
         phase={phase}
         gameMode={gameMode}
         playerProfile={playerProfile}
+        deckSize={deckSize}
+        currentChapter={playerProfile.currentChapter}
         onEndSession={handleEndSession}
         onSaveSession={() => setShowSaveDialog(true)}
         onLoadSession={() => setShowSessionManager(true)}
         onOpenCharacterSheet={() => setShowCharacterSheet(true)}
+      />
+
+      {/* Chapter Transition Overlay */}
+      <ChapterTransition
+        isOpen={showChapterTransition}
+        chapterNumber={playerProfile.currentChapter || 1}
       />
 
       {/* Main Content - Mobile First */}
@@ -929,7 +982,7 @@ function App() {
               </motion.div>
 
               {/* Main Action Buttons - Mobile First Grid */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
                 <motion.div
                   initial={{ x: -50, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
@@ -958,33 +1011,9 @@ function App() {
                 </motion.div>
 
                 <motion.div
-                  initial={{ y: -50, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.35 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="instant-feedback"
-                >
-                  <Card className="border-2 border-secondary/50 bg-gradient-to-br from-secondary/10 via-background to-background active:border-secondary transition-all cursor-pointer h-full mobile-touch-target"
-                    onClick={handleStartPlaygroundMode}
-                  >
-                    <CardContent className="p-6 sm:p-8 flex flex-col items-center justify-center space-y-3 sm:space-y-4 h-full min-h-[160px] sm:min-h-[200px]">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-secondary/20 flex items-center justify-center gpu-accelerated">
-                        <span className="text-3xl sm:text-4xl">🎨</span>
-                      </div>
-                      <div className="text-center space-y-1 sm:space-y-2">
-                        <h3 className="text-xl sm:text-2xl font-bold">Playground Mode</h3>
-                        <p className="text-xs sm:text-sm text-muted-foreground">
-                          Create your own story adventure
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-
-                <motion.div
                   initial={{ x: 50, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.4 }}
+                  transition={{ delay: 0.35 }}
                   whileTap={{ scale: 0.98 }}
                   className="instant-feedback"
                 >
@@ -1011,7 +1040,7 @@ function App() {
                 <motion.div
                   initial={{ x: 50, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.45 }}
+                  transition={{ delay: 0.4 }}
                   whileTap={{ scale: 0.98 }}
                   className="instant-feedback"
                 >
@@ -1313,11 +1342,16 @@ function App() {
               <div className="pb-16">
                 <Button
                   onClick={handlePlayResponse}
-                  disabled={selectedCards.length !== playerProfile.playAreaSize || isGeneratingNarrative}
+                  disabled={selectedCards.length < 1 || isGeneratingNarrative}
                   className="w-full instant-feedback"
                   size="lg"
                 >
-                  {isGeneratingNarrative ? 'Generating Actions...' : selectedCards.length === playerProfile.playAreaSize ? '⚔️ Play Cards' : `Select ${playerProfile.playAreaSize - selectedCards.length} More Card${playerProfile.playAreaSize - selectedCards.length > 1 ? 's' : ''}`}
+                  {isGeneratingNarrative
+                    ? 'Generating Actions...'
+                    : selectedCards.length === 0
+                      ? `Select 1-${playerProfile.playAreaSize} Cards`
+                      : `⚔️ Play ${selectedCards.length} Card${selectedCards.length > 1 ? 's' : ''} (${playerProfile.playAreaSize} max)`
+                  }
                 </Button>
               </div>
               </>
@@ -1401,10 +1435,21 @@ function App() {
                               size="lg"
                             >
                               <div className="space-y-1 w-full">
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between gap-2">
                                   <span className="font-bold capitalize text-base">
                                     {action.path}
                                   </span>
+                                  {action.successChance !== undefined && (
+                                    <span className={`text-sm font-bold font-mono px-3 py-1.5 rounded-md border whitespace-nowrap text-black ${
+                                      action.successChance >= 100 ? 'bg-green-400 border-green-500' :
+                                      action.successChance >= 75 ? 'bg-green-300 border-green-400' :
+                                      action.successChance >= 50 ? 'bg-yellow-300 border-yellow-400' :
+                                      action.successChance >= 25 ? 'bg-orange-300 border-orange-400' :
+                                      'bg-red-300 border-red-400'
+                                    }`}>
+                                      {action.successChance}%
+                                    </span>
+                                  )}
                                 </div>
                                 <p className={`text-sm whitespace-normal`}>
                                   {action.narrative}
@@ -1455,6 +1500,7 @@ function App() {
                     description={action.narrative}
                     icon={icons[action.path as keyof typeof icons]}
                     variant={action.isTotalFailure ? 'destructive' : 'default'}
+                    successChance={action.successChance}
                   />
                 );
               })}
@@ -1711,15 +1757,6 @@ function App() {
           )}
         </AnimatePresence>
 
-        {/* Difficulty Selector Modal */}
-        <DifficultySelector
-          isOpen={showDifficultySelector}
-          playerProfile={playerProfile}
-          onSelectDifficulty={handleDifficultySelected}
-          onClose={() => setShowDifficultySelector(false)}
-        />
-
-
         {/* Narrator Manager Modal */}
         <NarratorManagerComponent
           isOpen={showNarratorManager}
@@ -1786,6 +1823,18 @@ function App() {
 
       {/* Footer */}
       <GameFooter />
+
+      {/* Difficulty Selector Modal - Outside main for proper z-index */}
+      <DifficultySelector
+        isOpen={showDifficultySelector}
+        playerProfile={playerProfile}
+        onSelectDifficulty={handleDifficultySelected}
+        onClose={() => {
+          setShowDifficultySelector(false);
+          setIsStartingCampaign(false);
+        }}
+        isStartingCampaign={isStartingCampaign}
+      />
     </div>
   );
 }

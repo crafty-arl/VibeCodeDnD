@@ -11,9 +11,10 @@ interface DifficultySelectorProps {
   playerProfile: PlayerProfile;
   onSelectDifficulty: (difficultyId: DifficultyId) => void;
   onClose: () => void;
+  isStartingCampaign?: boolean;
 }
 
-export function DifficultySelector({ isOpen, playerProfile, onSelectDifficulty, onClose }: DifficultySelectorProps) {
+export function DifficultySelector({ isOpen, playerProfile, onSelectDifficulty, onClose, isStartingCampaign = false }: DifficultySelectorProps) {
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyId>(playerProfile.selectedDifficulty);
   const unlockedTiers = getUnlockedDifficulties(playerProfile.glory);
   const nextToUnlock = getNextDifficultyToUnlock(playerProfile.glory);
@@ -179,13 +180,13 @@ export function DifficultySelector({ isOpen, playerProfile, onSelectDifficulty, 
                   <Button
                     onClick={handleConfirm}
                     className="flex-1 gap-2"
-                    disabled={selectedDifficulty === playerProfile.selectedDifficulty}
+                    disabled={!isStartingCampaign && selectedDifficulty === playerProfile.selectedDifficulty}
                   >
-                    {selectedDifficulty === playerProfile.selectedDifficulty ? (
+                    {!isStartingCampaign && selectedDifficulty === playerProfile.selectedDifficulty ? (
                       'No Change'
                     ) : (
                       <>
-                        Confirm
+                        {isStartingCampaign ? 'Start Campaign' : 'Confirm'}
                         <ChevronRight className="w-4 h-4" />
                       </>
                     )}

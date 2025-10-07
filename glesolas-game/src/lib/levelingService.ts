@@ -280,7 +280,9 @@ export function createPlayerProfile(name: string = 'Hero'): PlayerProfile {
       sessionsCompleted: 0,
       highestStreak: 0,
       currentStreak: 0
-    }
+    },
+    currentChapter: 1, // Start at Chapter 1
+    cardsDrawnThisChapter: 0 // Track cards drawn
   };
 }
 
@@ -508,6 +510,12 @@ export function getOrCreatePlayerProfile(): PlayerProfile {
     }
     if (existing.selectedDifficulty === undefined) {
       existing.selectedDifficulty = 'Normal';
+    }
+    if (existing.currentChapter === undefined) {
+      existing.currentChapter = 1;
+    }
+    if (existing.cardsDrawnThisChapter === undefined) {
+      existing.cardsDrawnThisChapter = 0;
     }
     return existing;
   }

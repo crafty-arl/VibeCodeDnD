@@ -125,10 +125,17 @@ export class CompanionManager {
     // Generate AI flavor text and dialogue based on the encounter
     // The AI will extract the actual character name from the scene
     const { generateCompanionDialogue } = await import('./aiService');
+    console.log('🎭 Starting companion generation from encounter:', challenge.scene.substring(0, 100) + '...');
     const companionData = await generateCompanionDialogue(
       challenge.scene,
       winningPath
     );
+
+    if (companionData) {
+      console.log('✅ AI companion data generated:', companionData);
+    } else {
+      console.warn('⚠️ AI companion generation returned null - using fallback defaults');
+    }
 
     // Use AI-generated name or fallback
     const characterName = companionData?.name || 'Reformed Warrior';
