@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit, Trash2, Check, X, Layers, Sparkles } from 'lucide-react';
 import type { LoreCard } from '../types/game';
 import { LORE_DECK } from '../data/cards';
@@ -12,11 +12,12 @@ import { Input } from './ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
 interface DeckBuilderProps {
+  isOpen?: boolean;
   onClose: () => void;
   onDeckSelected?: (deck: Deck) => void;
 }
 
-export function DeckBuilder({ onClose, onDeckSelected }: DeckBuilderProps) {
+export function DeckBuilder({ isOpen = true, onClose, onDeckSelected }: DeckBuilderProps) {
   const [decks, setDecks] = useState<Deck[]>(DeckManager.getAllDecks());
   const [activeDeckId, setActiveDeckIdState] = useState(DeckManager.getActiveDeckId());
   const [editingDeck, setEditingDeck] = useState<Deck | null>(null);
@@ -64,47 +65,100 @@ export function DeckBuilder({ onClose, onDeckSelected }: DeckBuilderProps) {
 
   if (showAIGenerator) {
     return (
-      <AIDeckGenerator
-        onSave={(deck: Deck) => {
-          DeckManager.createDeck(deck.name, deck.description, deck.cards);
-          setDecks(DeckManager.getAllDecks());
-          setShowAIGenerator(false);
-        }}
-        onCancel={() => setShowAIGenerator(false)}
-      />
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+              onClick={onClose}
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-6xl max-h-[90vh] overflow-auto p-4"
+            >
+              <AIDeckGenerator
+                onSave={(deck: Deck) => {
+                  DeckManager.createDeck(deck.name, deck.description, deck.cards);
+                  setDecks(DeckManager.getAllDecks());
+                  setShowAIGenerator(false);
+                }}
+                onCancel={() => setShowAIGenerator(false)}
+              />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     );
   }
 
   if (showDeckEditor) {
     return (
-      <DeckEditor
-        deck={editingDeck}
-        onSave={handleSaveDeck}
-        onCancel={() => {
-          setShowDeckEditor(false);
-          setEditingDeck(null);
-        }}
-      />
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+              onClick={onClose}
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-6xl max-h-[90vh] overflow-auto p-4"
+            >
+              <DeckEditor
+                deck={editingDeck}
+                onSave={handleSaveDeck}
+                onCancel={() => {
+                  setShowDeckEditor(false);
+                  setEditingDeck(null);
+                }}
+              />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     );
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="space-y-4"
-    >
-      <Card className="border-primary/50">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Layers className="w-5 h-5" />
-              <span>Deck Manager</span>
-            </div>
-            <Button onClick={onClose} variant="ghost" size="sm">
-              <X className="w-4 h-4" />
-            </Button>
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+            onClick={onClose}
+          />
+
+          {/* Modal */}
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-6xl max-h-[90vh] overflow-auto p-4"
+          >
+            <Card className="border-primary/50">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-5 h-5" />
+                    <span>Deck Manager</span>
+                  </div>
+                  <Button onClick={onClose} variant="ghost" size="sm">
+                    <X className="w-4 h-4" />
+                  </Button>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -154,7 +208,10 @@ export function DeckBuilder({ onClose, onDeckSelected }: DeckBuilderProps) {
           )}
         </CardContent>
       </Card>
-    </motion.div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
 

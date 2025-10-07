@@ -9,6 +9,9 @@ export interface PlayerProfile {
   glory: number; // Legacy currency
   narrativeDice: number; // Resource for special actions
 
+  // Difficulty selection
+  selectedDifficulty: 'Normal' | 'Hard' | 'Expert' | 'Nightmare' | 'Legendary'; // Current difficulty tier
+
   // Skill bonuses from leveling
   bonusStats: {
     might: number;

@@ -43,7 +43,9 @@ import { LevelUpModal } from './components/LevelUpModal';
 import { PlayerLevelDisplay } from './components/PlayerLevelDisplay';
 import { PerkSelectionModal } from './components/PerkSelectionModal';
 import { AchievementsPanel } from './components/AchievementsPanel';
+import { DifficultySelector } from './components/DifficultySelector';
 import { getOrCreatePlayerProfile, awardXP, updateEncounterStats, savePlayerProfile } from './lib/levelingService';
+import { getDifficultyById, type DifficultyId } from './types/difficulty';
 import { Swords, Sparkles, Dices } from 'lucide-react';
 import './index.css';
 
@@ -75,6 +77,7 @@ function App() {
   const [showLevelUpModal, setShowLevelUpModal] = useState(false);
   const [showPerkModal, setShowPerkModal] = useState(false);
   const [showCharacterSheet, setShowCharacterSheet] = useState(false);
+  const [showDifficultySelector, setShowDifficultySelector] = useState(false);
 
   // Playground Mode State
   const [playgroundPhase, setPlaygroundPhase] = useState<'setup' | 'playing' | 'complete'>('setup');
@@ -307,10 +310,15 @@ function App() {
     // Check if chosen path is the key stat
     const isKeyStat = currentChallenge.keyStat === chosenPath;
 
+    // Get difficulty multiplier for rewards
+    const { getDifficultyById } = await import('./types/difficulty');
+    const difficulty = getDifficultyById(playerProfile.selectedDifficulty);
+    const difficultyMultiplier = difficulty.rewardMultiplier;
+
     if (totalFailure) {
       // TOTAL FAILURE: All paths locked - choose your doom
       success = false;
-      gloryGained = -50; // Bigger penalty for total failure
+      gloryGained = Math.floor(-50 * difficultyMultiplier); // Bigger penalty scales with difficulty
       narrativeDiceGained = 0;
       console.log(`💀💀💀 TOTAL FAILURE - Choose lesser of evils. Lose glory: ${gloryGained}`);
     } else if (isUnlocked) {
@@ -320,13 +328,14 @@ function App() {
       // KEY STAT SYSTEM: Full rewards if using the key stat, reduced if not
       if (isKeyStat) {
         // Using the key stat = full rewards
-        gloryGained = chosenPath === 'might' ? 50 : chosenPath === 'fortune' ? 40 : 60;
+        const baseGlory = chosenPath === 'might' ? 50 : chosenPath === 'fortune' ? 40 : 60;
+        gloryGained = Math.floor(baseGlory * difficultyMultiplier);
         narrativeDiceGained = 2;
-        console.log(`✨🔑 KEY STAT used! Full glory: +${gloryGained}`);
+        console.log(`✨🔑 KEY STAT used! Full glory: +${gloryGained} (${difficulty.name})`);
       } else {
         // Using non-key stat = reduced rewards (60% of normal)
         const baseGlory = chosenPath === 'might' ? 50 : chosenPath === 'fortune' ? 40 : 60;
-        gloryGained = Math.floor(baseGlory * 0.6);
+        gloryGained = Math.floor(baseGlory * 0.6 * difficultyMultiplier);
         narrativeDiceGained = 1;
         console.log(`⚠️ Non-key stat used. Reduced glory: +${gloryGained} (key was ${currentChallenge.keyStat})`);
       }
@@ -336,12 +345,13 @@ function App() {
 
       if (success) {
         // DM lets you pass - reduced rewards
-        gloryGained = chosenPath === 'might' ? 25 : chosenPath === 'fortune' ? 20 : 30;
+        const baseGlory = chosenPath === 'might' ? 25 : chosenPath === 'fortune' ? 20 : 30;
+        gloryGained = Math.floor(baseGlory * difficultyMultiplier);
         narrativeDiceGained = 1;
         console.log(`🎲 Locked path - DM mercy! Success with reduced glory: +${gloryGained}`);
       } else {
         // Failed the risky choice - lose glory!
-        gloryGained = -30;
+        gloryGained = Math.floor(-30 * difficultyMultiplier);
         narrativeDiceGained = 0;
         console.log(`💀 Locked path - FAILED! Lose glory: ${gloryGained}`);
       }
@@ -446,10 +456,32 @@ function App() {
     SessionManager.clearAutoSave();
   };
 
+  const [isStartingCampaign, setIsStartingCampaign] = useState(false);
+
   const handleStartCampaignMode = () => {
-    setGameMode('campaign');
-    setPhase('home');
-    setShowDeckSelector(true); // Go directly to deck selection
+    // Mark that we're starting a campaign (not just changing difficulty)
+    setIsStartingCampaign(true);
+    setShowDifficultySelector(true);
+  };
+
+  const handleDifficultySelected = (difficultyId: DifficultyId) => {
+    // Update player profile with new difficulty
+    playerProfile.selectedDifficulty = difficultyId;
+    savePlayerProfile(playerProfile);
+    setPlayerProfile({ ...playerProfile });
+    setShowDifficultySelector(false);
+
+    // Scroll to top when navigating
+    document.getElementById('main-content')?.scrollTo(0, 0);
+
+    // If we were starting campaign mode, continue to deck selector
+    if (isStartingCampaign) {
+      setIsStartingCampaign(false);
+      setGameMode('campaign');
+      setPhase('home');
+      setShowDeckSelector(true);
+    }
+    // Otherwise, just close the selector (user was changing difficulty from home screen)
   };
 
   const handleStartPlaygroundMode = () => {
@@ -715,18 +747,18 @@ function App() {
       />
 
       {/* Main Content - Mobile First */}
-      <main className="flex-1 overflow-y-auto smooth-scroll px-3 py-4 sm:px-4 sm:py-6 md:px-8">
-        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
+      <main className="flex-1 overflow-y-auto smooth-scroll px-3 py-4 sm:px-4 sm:py-6 md:px-8" id="main-content">
+        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 relative">
 
         {/* Game Phases */}
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" initial={false}>
           {/* MAIN MENU */}
           {gameMode === 'menu' && !showDeckBuilder && !showNarratorManager && (
             <motion.div
               key="home"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, x: -100 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -100 }}
               className="space-y-6"
             >
               {/* Main Menu Title */}
@@ -923,6 +955,24 @@ function App() {
                           <p className="text-xs text-yellow-400 text-center font-medium">Click to upgrade →</p>
                         </div>
                       </motion.div>
+
+                      {/* Difficulty Selection */}
+                      <motion.div
+                        whileHover={{ y: -2 }}
+                        className="cursor-pointer"
+                        onClick={() => setShowDifficultySelector(true)}
+                      >
+                        <div className="p-4 rounded-lg border border-border hover:border-purple-500/50 hover:bg-purple-500/5 transition-all space-y-2">
+                          <div className="flex items-center gap-2 justify-center">
+                            <Sparkles className="w-5 h-5 text-purple-400" />
+                            <h4 className="font-semibold">Difficulty</h4>
+                          </div>
+                          <p className="text-xs text-muted-foreground text-center">
+                            Current: <span className="font-semibold text-foreground">{getDifficultyById(playerProfile.selectedDifficulty).name}</span>
+                          </p>
+                          <p className="text-xs text-purple-400 text-center font-medium">Click to change →</p>
+                        </div>
+                      </motion.div>
                     </div>
                   </CardContent>
                 </Card>
@@ -946,10 +996,12 @@ function App() {
           {gameMode === 'campaign' && phase === 'home' && showDeckSelector && (
             <DeckSelector
               onConfirmSelection={handleDeckSelection}
-              onCancel={() => setGameMode('menu')}
+              onCancel={() => {
+                setGameMode('menu');
+                setShowDeckSelector(false);
+              }}
             />
           )}
-
 
           {/* PLAYGROUND MODE */}
           {gameMode === 'playground' && playgroundPhase === 'setup' && (
@@ -1359,19 +1411,6 @@ function App() {
           )}
         </AnimatePresence>
 
-        {/* Configuration Modals */}
-        {gameMode === 'menu' && showDeckBuilder && (
-          <DeckBuilder
-            onClose={() => setShowDeckBuilder(false)}
-          />
-        )}
-
-        {gameMode === 'menu' && showNarratorManager && (
-          <NarratorManagerComponent
-            onClose={() => setShowNarratorManager(false)}
-          />
-        )}
-
         {/* Session Management Modals */}
         <AnimatePresence>
           {showSessionManager && (
@@ -1461,6 +1500,26 @@ function App() {
             </>
           )}
         </AnimatePresence>
+
+        {/* Difficulty Selector Modal */}
+        <DifficultySelector
+          isOpen={showDifficultySelector}
+          playerProfile={playerProfile}
+          onSelectDifficulty={handleDifficultySelected}
+          onClose={() => setShowDifficultySelector(false)}
+        />
+
+        {/* Deck Builder Modal */}
+        <DeckBuilder
+          isOpen={showDeckBuilder}
+          onClose={() => setShowDeckBuilder(false)}
+        />
+
+        {/* Narrator Manager Modal */}
+        <NarratorManagerComponent
+          isOpen={showNarratorManager}
+          onClose={() => setShowNarratorManager(false)}
+        />
         </div>
       </main>
 

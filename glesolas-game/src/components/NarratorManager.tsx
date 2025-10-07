@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit, Trash2, Check, X, Mic, Sparkles } from 'lucide-react';
 import { NarratorManager, type NarratorPreset } from '../lib/narratorManager';
 import { Button } from './ui/button';
@@ -8,10 +8,11 @@ import { Input } from './ui/input';
 // Removed unused Tabs imports
 
 interface NarratorManagerProps {
+  isOpen?: boolean;
   onClose: () => void;
 }
 
-export function NarratorManagerComponent({ onClose }: NarratorManagerProps) {
+export function NarratorManagerComponent({ isOpen = true, onClose }: NarratorManagerProps) {
   const [narrators, setNarrators] = useState<NarratorPreset[]>(NarratorManager.getAllNarrators());
   const [activeNarratorId, setActiveNarratorIdState] = useState(NarratorManager.getActiveNarratorId());
   const [editingNarrator, setEditingNarrator] = useState<NarratorPreset | null>(null);
@@ -64,24 +65,54 @@ export function NarratorManagerComponent({ onClose }: NarratorManagerProps) {
 
   if (showNarratorEditor) {
     return (
-      <NarratorEditor
-        narrator={editingNarrator}
-        onSave={handleSaveNarrator}
-        onCancel={() => {
-          setShowNarratorEditor(false);
-          setEditingNarrator(null);
-        }}
-      />
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+              onClick={onClose}
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-3xl max-h-[90vh] overflow-auto p-4"
+            >
+              <NarratorEditor
+                narrator={editingNarrator}
+                onSave={handleSaveNarrator}
+                onCancel={() => {
+                  setShowNarratorEditor(false);
+                  setEditingNarrator(null);
+                }}
+              />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     );
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="space-y-4"
-    >
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-3xl max-h-[90vh] overflow-auto p-4"
+          >
       <Card className="border-primary/50">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
@@ -119,7 +150,10 @@ export function NarratorManagerComponent({ onClose }: NarratorManagerProps) {
           </div>
         </CardContent>
       </Card>
-    </motion.div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
 

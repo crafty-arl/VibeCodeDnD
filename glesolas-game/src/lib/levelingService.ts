@@ -255,6 +255,7 @@ export function createPlayerProfile(name: string = 'Hero'): PlayerProfile {
     totalXP: 0,
     glory: 0,
     narrativeDice: 100,
+    selectedDifficulty: 'Normal', // Start on Normal difficulty
     bonusStats: {
       might: 0,
       fortune: 0,
@@ -504,6 +505,9 @@ export function getOrCreatePlayerProfile(): PlayerProfile {
     if (existing.playAreaSize === undefined) {
       existing.playAreaSize = 1;
     }
+    if (existing.selectedDifficulty === undefined) {
+      existing.selectedDifficulty = 'Normal';
+    }
     return existing;
   }
 
@@ -528,29 +532,28 @@ export function getScaledChallengeRequirements(playerProfile: PlayerProfile): {
   const level = playerProfile.level;
   const playAreaSize = playerProfile.playAreaSize;
 
-  // Base requirements scale with play area size
-  // Level 1 (1 card play): 3-5 range per stat
-  // Level 5+ (2 cards play): 6-10 range
-  // Level 10+ (3 cards play): 9-15 range
+  // Get current difficulty tier
+  const { getDifficultyById } = require('@/types/difficulty');
+  const difficulty = getDifficultyById(playerProfile.selectedDifficulty || 'Normal');
 
-  let baseMin = 3;
-  let baseMax = 5;
+  // Base calculation: scale with cards available
+  // Each card slot contributes ~5 points of potential stats (avg card has ~6 total / 3 stats = 2 per stat)
+  const basePerCard = 5;
 
-  if (playAreaSize >= 3) {
-    baseMin = 9;
-    baseMax = 15;
-  } else if (playAreaSize >= 2) {
-    baseMin = 6;
-    baseMax = 10;
-  }
+  // Add exponential level scaling (+level^1.2)
+  const levelBonus = Math.pow(level, 1.2);
 
-  // Add variance based on level (+0.5 per level)
-  const levelModifier = Math.floor(level * 0.5);
+  // Calculate base requirement
+  const baseRequirement = playAreaSize * basePerCard + levelBonus;
 
-  // Random but consistent per call
-  const might_req = Math.floor(baseMin + Math.random() * (baseMax - baseMin) + levelModifier);
-  const fortune_req = Math.floor(baseMin + Math.random() * (baseMax - baseMin) + levelModifier);
-  const cunning_req = Math.floor(baseMin + Math.random() * (baseMax - baseMin) + levelModifier);
+  // Apply difficulty multiplier
+  const scaledRequirement = baseRequirement * difficulty.requirementMultiplier;
+
+  // Add random variance (±25% for variety)
+  const variance = 0.25;
+  const might_req = Math.floor(scaledRequirement * (1 + (Math.random() - 0.5) * variance));
+  const fortune_req = Math.floor(scaledRequirement * (1 + (Math.random() - 0.5) * variance));
+  const cunning_req = Math.floor(scaledRequirement * (1 + (Math.random() - 0.5) * variance));
 
   return {
     might_req: Math.max(3, might_req), // Minimum 3
