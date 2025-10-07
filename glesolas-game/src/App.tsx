@@ -371,8 +371,6 @@ function App() {
       introScene
     );
 
-    const total = calculateTotalStats(selectedCards, playerProfile);
-
     setLastResult({
       path: chosenPath,
       success,

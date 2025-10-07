@@ -39,7 +39,8 @@
       "mcp__cloudflare-observability__search_cloudflare_documentation",
       "Bash(timeout 15 npx tsc --noEmit)",
       "Bash(dir /s /b \"C:\\Users\\aaron\\Documents\\VibeCodeDnD\\glesolas-game\\src\\types\")",
-      "Bash(timeout 20 npx tsc --noEmit)"
+      "Bash(timeout 20 npx tsc --noEmit)",
+      "Bash(ping:*)"
     ],
     "deny": [],
     "ask": []
