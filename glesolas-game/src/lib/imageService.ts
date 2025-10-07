@@ -4,6 +4,8 @@
  * Maintains consistent aesthetic across all sessions
  */
 
+import { NarratorManager } from './narratorManager';
+
 export interface ImageGenerationOptions {
   width?: number;
   height?: number;
@@ -19,9 +21,6 @@ export interface ImageGenerationOptions {
  * Optimized for Pollinations.ai - short keywords for faster generation
  */
 function getStyleGuide(narratorTone?: string, storyGenre?: string): string {
-  // Import at runtime to avoid circular dependencies
-  const NarratorManager = require('./narratorManager').NarratorManager;
-
   // Get active narrator context
   const activeNarrator = NarratorManager.getActiveNarrator();
   const tone = narratorTone || activeNarrator.tone;
