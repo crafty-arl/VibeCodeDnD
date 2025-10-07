@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { LoreCard } from '@/types/game';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -158,14 +159,14 @@ export function LoreCardComponent({ card, selected, onClick, disabled }: LoreCar
         </Card>
       </motion.div>
 
-      {/* Card Details Modal */}
-      <AnimatePresence>
-        {showDetails && (
+      {/* Card Details Modal - Using Portal to render at document root */}
+      {showDetails && createPortal(
+        <AnimatePresence>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80"
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80"
             onClick={() => setShowDetails(false)}
           >
             <motion.div
@@ -310,8 +311,9 @@ export function LoreCardComponent({ card, selected, onClick, disabled }: LoreCar
               </Card>
             </motion.div>
           </motion.div>
-        )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   );
 }
