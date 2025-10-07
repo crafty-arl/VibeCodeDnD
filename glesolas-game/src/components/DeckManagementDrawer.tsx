@@ -96,17 +96,17 @@ export function DeckManagementDrawer({ isOpen, onClose }: DeckManagementDrawerPr
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-50 bg-background rounded-t-3xl border-t-2 border-primary/50 shadow-2xl max-h-[85vh] flex flex-col"
+            transition={{ type: 'spring', damping: 25, stiffness: 250 }}
+            className="fixed bottom-0 left-0 right-0 z-50 bg-background rounded-t-2xl border-t border-border shadow-2xl h-[90vh] flex flex-col"
           >
             {/* Handle Bar */}
-            <div className="flex items-center justify-center py-3 border-b border-border/50">
+            <div className="flex items-center justify-center py-2 shrink-0 cursor-pointer" onClick={onClose}>
               <div className="w-12 h-1 bg-muted-foreground/30 rounded-full" />
             </div>
 
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-              <h2 className="text-xl font-bold flex items-center gap-2">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border shrink-0">
+              <h2 className="text-lg font-bold flex items-center gap-2">
                 <Library className="w-5 h-5" />
                 Deck Management
               </h2>
@@ -116,68 +116,78 @@ export function DeckManagementDrawer({ isOpen, onClose }: DeckManagementDrawerPr
             </div>
 
             {/* Tabs */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-              <TabsList className="grid w-full grid-cols-5 mx-4 mt-2">
-                <TabsTrigger value="collection" className="text-xs">
-                  <Library className="w-4 h-4 mr-1" />
-                  Collection
-                </TabsTrigger>
-                <TabsTrigger value="active" className="text-xs">
-                  <Sword className="w-4 h-4 mr-1" />
-                  Active
-                </TabsTrigger>
-                <TabsTrigger value="decks" className="text-xs">
-                  <Layers className="w-4 h-4 mr-1" />
-                  Decks
-                </TabsTrigger>
-                <TabsTrigger value="create" className="text-xs">
-                  <Plus className="w-4 h-4 mr-1" />
-                  Create
-                </TabsTrigger>
-                <TabsTrigger value="companions" className="text-xs">
-                  <Heart className="w-4 h-4 mr-1" />
-                  Allies
-                </TabsTrigger>
-              </TabsList>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+              <div className="shrink-0 px-4 pt-2 pb-1">
+                <TabsList className="grid w-full grid-cols-5 h-auto">
+                  <TabsTrigger value="collection" className="text-xs py-2 px-1 flex flex-col sm:flex-row items-center gap-1">
+                    <Library className="w-4 h-4" />
+                    <span className="hidden sm:inline">Collection</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="active" className="text-xs py-2 px-1 flex flex-col sm:flex-row items-center gap-1">
+                    <Sword className="w-4 h-4" />
+                    <span className="hidden sm:inline">Active</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="decks" className="text-xs py-2 px-1 flex flex-col sm:flex-row items-center gap-1">
+                    <Layers className="w-4 h-4" />
+                    <span className="hidden sm:inline">Decks</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="create" className="text-xs py-2 px-1 flex flex-col sm:flex-row items-center gap-1">
+                    <Plus className="w-4 h-4" />
+                    <span className="hidden sm:inline">Create</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="companions" className="text-xs py-2 px-1 flex flex-col sm:flex-row items-center gap-1">
+                    <Heart className="w-4 h-4" />
+                    <span className="hidden sm:inline">Allies</span>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
-              <div className="flex-1 overflow-y-auto px-4 pb-4">
+              <div className="flex-1 overflow-y-auto px-4 pb-4 min-h-0">
                 {/* Collection Tab */}
-                <TabsContent value="collection" className="mt-4 space-y-4">
-                  <div className="space-y-2">
+                <TabsContent value="collection" className="mt-2 space-y-3 h-full">
+                  <div className="space-y-2 sticky top-0 bg-background pb-2 z-10">
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-muted-foreground">
-                        {allCards.length} cards in your collection
+                        {filteredCards.length} of {allCards.length} cards
                       </p>
                     </div>
                     <Input
                       placeholder="Search cards..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full"
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {filteredCards.map(card => (
-                      <LoreCardComponent
-                        key={card.id}
-                        card={card}
-                      />
-                    ))}
-                  </div>
+                  {filteredCards.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Library className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p>No cards found</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 pb-4">
+                      {filteredCards.map(card => (
+                        <LoreCardComponent
+                          key={card.id}
+                          card={card}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </TabsContent>
 
                 {/* Active Deck Tab */}
-                <TabsContent value="active" className="mt-4 space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>{activeDeck.name}</CardTitle>
+                <TabsContent value="active" className="mt-2 space-y-3 h-full">
+                  <Card className="border-primary/50">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg">{activeDeck.name}</CardTitle>
                       <p className="text-sm text-muted-foreground">{activeDeck.description}</p>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {activeDeck.cards.length} cards
                       </p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                         {activeDeck.cards.map(card => {
                           const enrichedCard = card.type === 'Character' ? CompanionManager.enrichCard(card) : card;
                           return (
@@ -193,46 +203,54 @@ export function DeckManagementDrawer({ isOpen, onClose }: DeckManagementDrawerPr
                 </TabsContent>
 
                 {/* Decks Tab */}
-                <TabsContent value="decks" className="mt-4 space-y-4">
-                  {decks.map(deck => (
-                    <Card key={deck.id} className={deck.id === activeDeck.id ? 'border-primary' : ''}>
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <CardTitle className="text-lg">{deck.name}</CardTitle>
-                            <p className="text-sm text-muted-foreground">{deck.description}</p>
-                            <p className="text-xs text-muted-foreground mt-1">{deck.cards.length} cards</p>
+                <TabsContent value="decks" className="mt-2 space-y-3 h-full">
+                  {decks.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Layers className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p>No decks created</p>
+                    </div>
+                  ) : (
+                    decks.map(deck => (
+                      <Card key={deck.id} className={deck.id === activeDeck.id ? 'border-primary' : ''}>
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <CardTitle className="text-base truncate">{deck.name}</CardTitle>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{deck.description}</p>
+                              <p className="text-xs text-muted-foreground mt-1">{deck.cards.length} cards</p>
+                            </div>
+                            <div className="flex gap-2 shrink-0">
+                              {deck.id !== activeDeck.id && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleSelectDeck(deck.id)}
+                                  className="whitespace-nowrap"
+                                >
+                                  Equip
+                                </Button>
+                              )}
+                              {deck.id === activeDeck.id && (
+                                <span className="text-xs px-2 py-1 bg-primary/20 rounded whitespace-nowrap">Active</span>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex gap-2">
-                            {deck.id !== activeDeck.id && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleSelectDeck(deck.id)}
-                              >
-                                Equip
-                              </Button>
-                            )}
-                            {deck.id === activeDeck.id && (
-                              <span className="text-xs px-2 py-1 bg-primary/20 rounded">Active</span>
-                            )}
-                          </div>
-                        </div>
-                      </CardHeader>
-                    </Card>
-                  ))}
+                        </CardHeader>
+                      </Card>
+                    ))
+                  )}
                 </TabsContent>
 
                 {/* Create Tab */}
-                <TabsContent value="create" className="mt-4 space-y-4">
+                <TabsContent value="create" className="mt-2 space-y-3 h-full">
                   {!showDeckEditor && !showAIGenerator && !showSingleCardGenerator && (
-                    <div className="space-y-3">
+                    <div className="space-y-3 max-w-md mx-auto pt-4">
                       <Button
                         onClick={handleCreateNewDeck}
                         className="w-full"
                         size="lg"
                       >
-                        <Plus className="w-4 h-4 mr-2" />
+                        <Plus className="w-5 h-5 mr-2" />
                         Create Custom Deck
                       </Button>
                       <Button
@@ -241,7 +259,7 @@ export function DeckManagementDrawer({ isOpen, onClose }: DeckManagementDrawerPr
                         size="lg"
                         variant="outline"
                       >
-                        <Library className="w-4 h-4 mr-2" />
+                        <Library className="w-5 h-5 mr-2" />
                         AI Generate Full Deck
                       </Button>
                       <Button
@@ -250,7 +268,7 @@ export function DeckManagementDrawer({ isOpen, onClose }: DeckManagementDrawerPr
                         size="lg"
                         variant="outline"
                       >
-                        <Wand2 className="w-4 h-4 mr-2" />
+                        <Wand2 className="w-5 h-5 mr-2" />
                         AI Generate Single Card
                       </Button>
                     </div>
@@ -285,18 +303,28 @@ export function DeckManagementDrawer({ isOpen, onClose }: DeckManagementDrawerPr
                 </TabsContent>
 
                 {/* Companions Tab */}
-                <TabsContent value="companions" className="mt-4 space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    {companions.length} companions recruited
-                  </p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {companions.map(card => (
-                      <LoreCardComponent
-                        key={card.id}
-                        card={card}
-                      />
-                    ))}
+                <TabsContent value="companions" className="mt-2 space-y-3 h-full">
+                  <div className="sticky top-0 bg-background pb-2 z-10">
+                    <p className="text-sm text-muted-foreground">
+                      {companions.length} companion{companions.length !== 1 ? 's' : ''} recruited
+                    </p>
                   </div>
+                  {companions.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Heart className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p>No companions recruited yet</p>
+                      <p className="text-xs mt-2">Win encounters with key stats to recruit allies</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 pb-4">
+                      {companions.map(card => (
+                        <LoreCardComponent
+                          key={card.id}
+                          card={card}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </TabsContent>
               </div>
             </Tabs>
