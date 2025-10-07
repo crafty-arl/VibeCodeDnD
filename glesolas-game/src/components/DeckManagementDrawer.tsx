@@ -117,7 +117,7 @@ export function DeckManagementDrawer({ isOpen, onClose }: DeckManagementDrawerPr
 
             {/* Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-              <div className="shrink-0 px-4 pt-2 pb-1">
+              <div className="shrink-0 px-4 pt-2 pb-1 bg-background border-b border-border relative z-10">
                 <TabsList className="grid w-full grid-cols-5 h-auto">
                   <TabsTrigger value="collection" className="text-xs py-2 px-1 flex flex-col sm:flex-row items-center gap-1">
                     <Library className="w-4 h-4" />
@@ -142,10 +142,10 @@ export function DeckManagementDrawer({ isOpen, onClose }: DeckManagementDrawerPr
                 </TabsList>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-4 pb-4 min-h-0">
+              <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2 min-h-0">
                 {/* Collection Tab */}
-                <TabsContent value="collection" className="mt-2 space-y-3 h-full">
-                  <div className="space-y-2 sticky top-0 bg-background pb-2 z-10">
+                <TabsContent value="collection" className="mt-0 space-y-3 h-full">
+                  <div className="space-y-2 sticky top-0 bg-background pb-2 z-[5] pt-2">
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-muted-foreground">
                         {filteredCards.length} of {allCards.length} cards
@@ -177,7 +177,7 @@ export function DeckManagementDrawer({ isOpen, onClose }: DeckManagementDrawerPr
                 </TabsContent>
 
                 {/* Active Deck Tab */}
-                <TabsContent value="active" className="mt-2 space-y-3 h-full">
+                <TabsContent value="active" className="mt-0 space-y-3 h-full">
                   <Card className="border-primary/50">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-lg">{activeDeck.name}</CardTitle>
@@ -203,7 +203,7 @@ export function DeckManagementDrawer({ isOpen, onClose }: DeckManagementDrawerPr
                 </TabsContent>
 
                 {/* Decks Tab */}
-                <TabsContent value="decks" className="mt-2 space-y-3 h-full">
+                <TabsContent value="decks" className="mt-0 space-y-3 h-full">
                   {decks.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground">
                       <Layers className="w-12 h-12 mx-auto mb-2 opacity-50" />
@@ -242,7 +242,7 @@ export function DeckManagementDrawer({ isOpen, onClose }: DeckManagementDrawerPr
                 </TabsContent>
 
                 {/* Create Tab */}
-                <TabsContent value="create" className="mt-2 space-y-3 h-full">
+                <TabsContent value="create" className="mt-0 space-y-3 h-full">
                   {!showDeckEditor && !showAIGenerator && !showSingleCardGenerator && (
                     <div className="space-y-3 max-w-md mx-auto pt-4">
                       <Button
@@ -303,8 +303,8 @@ export function DeckManagementDrawer({ isOpen, onClose }: DeckManagementDrawerPr
                 </TabsContent>
 
                 {/* Companions Tab */}
-                <TabsContent value="companions" className="mt-2 space-y-3 h-full">
-                  <div className="sticky top-0 bg-background pb-2 z-10">
+                <TabsContent value="companions" className="mt-0 space-y-3 h-full">
+                  <div className="sticky top-0 bg-background pb-2 z-[5] pt-2">
                     <p className="text-sm text-muted-foreground">
                       {companions.length} companion{companions.length !== 1 ? 's' : ''} recruited
                     </p>
