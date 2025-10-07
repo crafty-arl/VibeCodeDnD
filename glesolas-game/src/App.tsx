@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Scroll, Trophy, Mic } from 'lucide-react';
+import { Scroll, Trophy, Mic, Layers } from 'lucide-react';
 import type { LoreCard, GamePhase, SkillCheck, RollResult, ActionPath } from './types/game';
 import type { PlaygroundStartMode, ThemeOption, PlaygroundScene, NarrativePrompt, StoryMemory } from './types/playground';
 import type { PlayerProfile, LevelUpResult } from './types/player';
@@ -16,6 +16,7 @@ import { SessionManagerComponent, SaveSessionDialog } from './components/Session
 import { DeckSelector } from './components/DeckSelector';
 import { DeckBuilder } from './components/DeckBuilder';
 import { DeckManager } from './lib/deckManager';
+import { DeckManagementDrawer } from './components/DeckManagementDrawer';
 import { NarratorManager } from './lib/narratorManager';
 import { NarratorManagerComponent } from './components/NarratorManager';
 import { LoadingNarrative } from './components/LoadingNarrative';
@@ -71,6 +72,7 @@ function App() {
   const [showDeckSelector, setShowDeckSelector] = useState(false);
   const [showDeckBuilder, setShowDeckBuilder] = useState(false);
   const [showNarratorManager, setShowNarratorManager] = useState(false);
+  const [showDeckDrawer, setShowDeckDrawer] = useState(false);
   const [detailModalCard, setDetailModalCard] = useState<LoreCard | null>(null);
 
   // Leveling System State
@@ -1202,18 +1204,35 @@ function App() {
                 </Card>
               </motion.div>
 
-              {/* Footer Tip */}
+              {/* Deck Management Tab Hint */}
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.7 }}
-                className="text-center"
+                className="text-center pb-20"
               >
-                <p className="text-xs text-muted-foreground italic">
-                  💡 Tip: Configure your deck and narrator before starting a new adventure
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setShowDeckDrawer(true)}
+                  className="w-full max-w-md mx-auto"
+                >
+                  <Layers className="w-5 h-5 mr-2" />
+                  Open Deck Management
+                </Button>
+                <p className="text-xs text-muted-foreground italic mt-2">
+                  💡 Manage your card collection, decks, and companions
                 </p>
               </motion.div>
             </motion.div>
+          )}
+
+          {/* Deck Management Drawer - Only on Home Menu */}
+          {gameMode === 'menu' && (
+            <DeckManagementDrawer
+              isOpen={showDeckDrawer}
+              onClose={() => setShowDeckDrawer(false)}
+            />
           )}
 
           {/* CAMPAIGN MODE */}
