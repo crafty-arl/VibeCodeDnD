@@ -39,7 +39,7 @@ export function CardDetailModal({ card, open, onClose, onSelect, selected, disab
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50"
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-60"
           />
 
           {/* Modal */}
@@ -48,7 +48,7 @@ export function CardDetailModal({ card, open, onClose, onSelect, selected, disab
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 50 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+            className="fixed inset-0 z-60 flex items-center justify-center p-4 pointer-events-none"
           >
             <div className="pointer-events-auto w-full max-w-md">
               <div className={`relative rounded-2xl bg-gradient-to-br ${rarityColors[card.rarity]} p-1 shadow-2xl ${rarityGlow[card.rarity]}`}>

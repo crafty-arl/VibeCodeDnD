@@ -82,14 +82,14 @@ export function DeckBuilder({ isOpen = true, onClose, onDeckSelected }: DeckBuil
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-60"
               onClick={onClose}
             />
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-6xl max-h-[90vh] overflow-auto p-4"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-60 w-full max-w-6xl max-h-[90vh] overflow-auto p-4"
             >
               <AIDeckGenerator
                 onSave={(deck: Deck) => {
@@ -115,14 +115,14 @@ export function DeckBuilder({ isOpen = true, onClose, onDeckSelected }: DeckBuil
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-60"
               onClick={onClose}
             />
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-6xl max-h-[90vh] overflow-auto p-4"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-60 w-full max-w-6xl max-h-[90vh] overflow-auto p-4"
             >
               <DeckEditor
                 deck={editingDeck}
@@ -148,7 +148,7 @@ export function DeckBuilder({ isOpen = true, onClose, onDeckSelected }: DeckBuil
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-60"
             onClick={onClose}
           />
 
@@ -157,7 +157,7 @@ export function DeckBuilder({ isOpen = true, onClose, onDeckSelected }: DeckBuil
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-6xl max-h-[90vh] overflow-auto p-4"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-60 w-full max-w-6xl max-h-[90vh] overflow-auto p-4"
           >
             <Card className="border-primary/50">
               <CardHeader>

@@ -169,7 +169,7 @@ export function TutorialOverlay({ step, onNext, onSkip, canSkip = true }: Tutori
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4"
+        className="fixed inset-0 z-60 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4"
       >
         <motion.div
           initial={{ scale: 0.9, y: 20 }}
@@ -276,7 +276,7 @@ export function TutorialComplete({ onClose }: { onClose: () => void }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4"
+        className="fixed inset-0 z-60 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4"
       >
         <motion.div
           initial={{ scale: 0.8, rotate: -5 }}

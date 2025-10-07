@@ -20,7 +20,7 @@ export function LevelUpModal({ isOpen, onClose, levelUpResult }: LevelUpModalPro
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-60"
             onClick={onClose}
           />
 
@@ -30,7 +30,7 @@ export function LevelUpModal({ isOpen, onClose, levelUpResult }: LevelUpModalPro
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.8, opacity: 0, y: 50 }}
             transition={{ type: 'spring', damping: 20 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-60 w-full max-w-lg"
           >
             <Card className="relative border-2 border-accent shadow-2xl bg-gradient-to-br from-background via-background to-accent/20">
               {/* Close button */}
