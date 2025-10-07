@@ -1,8 +1,13 @@
 import type { LoreCard, SkillCheck, RollResult, SkillPath, CardStats } from '@/types/game';
 import type { PlayerProfile } from '@/types/player';
 import { generateResolutionScene } from '@/data/scenes';
+import { CompanionManager } from './companionManager';
 
-export function calculateTotalStats(cards: LoreCard[], playerProfile?: PlayerProfile): CardStats {
+export function calculateTotalStats(
+  cards: LoreCard[],
+  playerProfile?: PlayerProfile,
+  includeCompanionBonuses = true
+): CardStats {
   const baseStats = cards.reduce(
     (total, card) => ({
       might: total.might + card.stats.might,
@@ -12,12 +17,34 @@ export function calculateTotalStats(cards: LoreCard[], playerProfile?: PlayerPro
     { might: 0, fortune: 0, cunning: 0 }
   );
 
+  // Add companion loyalty bonuses
+  if (includeCompanionBonuses) {
+    cards
+      .filter(c => c.type === 'Character' && c.loyalty)
+      .forEach(card => {
+        const bonus = CompanionManager.getLoyaltyBonus(card.loyalty!);
+        baseStats.might += bonus.might;
+        baseStats.fortune += bonus.fortune;
+        baseStats.cunning += bonus.cunning;
+      });
+  }
+
   // Apply player bonus stats from leveling and perks
   if (playerProfile) {
+    // Apply injuries
+    let injuryDebuff = { might: 0, fortune: 0, cunning: 0 };
+    if (playerProfile.activeInjuries && playerProfile.activeInjuries.length > 0) {
+      playerProfile.activeInjuries.forEach(injury => {
+        injuryDebuff.might += injury.statDebuff.might;
+        injuryDebuff.fortune += injury.statDebuff.fortune;
+        injuryDebuff.cunning += injury.statDebuff.cunning;
+      });
+    }
+
     return {
-      might: baseStats.might + playerProfile.bonusStats.might,
-      fortune: baseStats.fortune + playerProfile.bonusStats.fortune,
-      cunning: baseStats.cunning + playerProfile.bonusStats.cunning,
+      might: baseStats.might + playerProfile.bonusStats.might + injuryDebuff.might,
+      fortune: baseStats.fortune + playerProfile.bonusStats.fortune + injuryDebuff.fortune,
+      cunning: baseStats.cunning + playerProfile.bonusStats.cunning + injuryDebuff.cunning,
     };
   }
 

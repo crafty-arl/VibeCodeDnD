@@ -2,8 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { LoreCard } from '@/types/game';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Dices, Sparkles, Swords, X } from 'lucide-react';
+import { Dices, Sparkles, Swords, X, Heart } from 'lucide-react';
 import { Button } from './ui/button';
+import { CompanionManager } from '@/lib/companionManager';
 
 interface LoreCardProps {
   card: LoreCard;
@@ -22,6 +23,20 @@ export function LoreCardComponent({ card, selected, onClick, disabled }: LoreCar
     Uncommon: 'border-green-500',
     Rare: 'border-blue-500',
     Legendary: 'border-primary',
+  };
+
+  // Calculate loyalty display for Character cards
+  const isCompanion = card.type === 'Character' && card.loyalty !== undefined;
+  const loyalty = card.loyalty || 0;
+  const loyaltyTier = isCompanion ? CompanionManager.getLoyaltyTier(loyalty) : null;
+  const loyaltyBonus = isCompanion ? CompanionManager.getLoyaltyBonus(loyalty) : null;
+
+  const tierColors = {
+    stranger: 'text-gray-400',
+    acquaintance: 'text-green-400',
+    friend: 'text-blue-400',
+    trusted: 'text-purple-400',
+    legendary: 'text-yellow-400',
   };
 
   const handlePressStart = () => {
@@ -88,6 +103,14 @@ export function LoreCardComponent({ card, selected, onClick, disabled }: LoreCar
                 loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent" />
+              {isCompanion && loyaltyTier && (
+                <div className="absolute top-2 right-2 flex items-center gap-1 bg-background/80 backdrop-blur-sm px-2 py-1 rounded-full border border-primary/30">
+                  <Heart className={`w-3 h-3 ${tierColors[loyaltyTier as keyof typeof tierColors]}`} />
+                  <span className={`text-xs font-bold ${tierColors[loyaltyTier as keyof typeof tierColors]}`}>
+                    {loyalty}
+                  </span>
+                </div>
+              )}
             </div>
           )}
           <CardHeader className="pb-2 pt-3 px-3">
@@ -101,16 +124,33 @@ export function LoreCardComponent({ card, selected, onClick, disabled }: LoreCar
               <div className="flex items-center gap-1">
                 <Swords className="w-4 h-4 text-red-400 flex-shrink-0" />
                 <span className="font-mono font-bold">{card.stats.might}</span>
+                {loyaltyBonus && loyaltyBonus.might > 0 && (
+                  <span className="text-xs text-green-400">+{loyaltyBonus.might}</span>
+                )}
               </div>
               <div className="flex items-center gap-1">
                 <Dices className="w-4 h-4 text-green-400 flex-shrink-0" />
                 <span className="font-mono font-bold">{card.stats.fortune}</span>
+                {loyaltyBonus && loyaltyBonus.fortune > 0 && (
+                  <span className="text-xs text-green-400">+{loyaltyBonus.fortune}</span>
+                )}
               </div>
               <div className="flex items-center gap-1">
                 <Sparkles className="w-4 h-4 text-blue-400 flex-shrink-0" />
                 <span className="font-mono font-bold">{card.stats.cunning}</span>
+                {loyaltyBonus && loyaltyBonus.cunning > 0 && (
+                  <span className="text-xs text-green-400">+{loyaltyBonus.cunning}</span>
+                )}
               </div>
             </div>
+            {isCompanion && loyaltyTier && (
+              <div className="flex items-center justify-center gap-1 text-xs">
+                <Heart className={`w-3 h-3 ${tierColors[loyaltyTier as keyof typeof tierColors]}`} />
+                <span className={`font-medium capitalize ${tierColors[loyaltyTier as keyof typeof tierColors]}`}>
+                  {loyaltyTier}
+                </span>
+              </div>
+            )}
             <p className="text-xs text-muted-foreground italic leading-relaxed line-clamp-3">
               "{card.flavor}"
             </p>
@@ -180,6 +220,30 @@ export function LoreCardComponent({ card, selected, onClick, disabled }: LoreCar
                       <span className="text-2xl font-bold font-mono">{card.stats.cunning}</span>
                     </div>
                   </div>
+
+                  {isCompanion && loyaltyTier && (
+                    <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Heart className={`w-4 h-4 ${tierColors[loyaltyTier as keyof typeof tierColors]}`} />
+                          <span className="text-sm font-semibold">Loyalty</span>
+                        </div>
+                        <span className={`text-lg font-bold ${tierColors[loyaltyTier as keyof typeof tierColors]}`}>
+                          {loyalty}
+                        </span>
+                      </div>
+                      <div className="text-xs">
+                        <span className={`font-medium capitalize ${tierColors[loyaltyTier as keyof typeof tierColors]}`}>
+                          {loyaltyTier}
+                        </span>
+                        {loyaltyBonus && (loyaltyBonus.might > 0 || loyaltyBonus.fortune > 0 || loyaltyBonus.cunning > 0) && (
+                          <span className="text-muted-foreground ml-2">
+                            • Bonus: +{loyaltyBonus.might}/{loyaltyBonus.fortune}/{loyaltyBonus.cunning}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <p className="text-sm font-semibold">Flavor Text</p>

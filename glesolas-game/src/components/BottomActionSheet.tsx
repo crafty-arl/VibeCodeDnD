@@ -74,6 +74,7 @@ interface ActionSheetButtonProps {
   title: string;
   description?: string;
   icon?: ReactNode;
+  variant?: 'default' | 'destructive' | 'outline';
 }
 
 export function ActionSheetButton({
@@ -82,13 +83,14 @@ export function ActionSheetButton({
   locked,
   title,
   description,
-  icon
+  icon,
+  variant = 'default'
 }: ActionSheetButtonProps) {
   return (
     <Button
       onClick={onClick}
       disabled={disabled || locked}
-      variant={locked ? 'outline' : 'default'}
+      variant={locked ? 'outline' : variant}
       className="w-full h-auto p-4 text-left justify-start whitespace-normal min-h-[80px]"
     >
       <div className="flex items-start gap-3 w-full">

@@ -1,4 +1,5 @@
 import type { PlayerProfile, PlayerPerk, Achievement, LevelUpResult } from '@/types/player';
+import { getDifficultyById } from '@/types/difficulty';
 
 // XP requirements for each level (exponential growth)
 export function getXPRequiredForLevel(level: number): number {
@@ -533,7 +534,6 @@ export function getScaledChallengeRequirements(playerProfile: PlayerProfile): {
   const playAreaSize = playerProfile.playAreaSize;
 
   // Get current difficulty tier
-  const { getDifficultyById } = require('@/types/difficulty');
   const difficulty = getDifficultyById(playerProfile.selectedDifficulty || 'Normal');
 
   // Base calculation: scale with cards available
@@ -549,11 +549,17 @@ export function getScaledChallengeRequirements(playerProfile: PlayerProfile): {
   // Apply difficulty multiplier
   const scaledRequirement = baseRequirement * difficulty.requirementMultiplier;
 
+  // Apply pending encounter modifier from consequences
+  const pendingModifier = playerProfile.pendingEncounterModifier || 0;
+
+  // Apply threat level modifier
+  const threatModifier = playerProfile.threatLevel || 0;
+
   // Add random variance (±25% for variety)
   const variance = 0.25;
-  const might_req = Math.floor(scaledRequirement * (1 + (Math.random() - 0.5) * variance));
-  const fortune_req = Math.floor(scaledRequirement * (1 + (Math.random() - 0.5) * variance));
-  const cunning_req = Math.floor(scaledRequirement * (1 + (Math.random() - 0.5) * variance));
+  const might_req = Math.floor((scaledRequirement + pendingModifier + threatModifier) * (1 + (Math.random() - 0.5) * variance));
+  const fortune_req = Math.floor((scaledRequirement + pendingModifier + threatModifier) * (1 + (Math.random() - 0.5) * variance));
+  const cunning_req = Math.floor((scaledRequirement + pendingModifier + threatModifier) * (1 + (Math.random() - 0.5) * variance));
 
   return {
     might_req: Math.max(3, might_req), // Minimum 3

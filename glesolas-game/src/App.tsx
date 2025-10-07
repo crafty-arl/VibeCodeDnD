@@ -44,6 +44,8 @@ import { PlayerLevelDisplay } from './components/PlayerLevelDisplay';
 import { PerkSelectionModal } from './components/PerkSelectionModal';
 import { AchievementsPanel } from './components/AchievementsPanel';
 import { DifficultySelector } from './components/DifficultySelector';
+import { CompanionPanel } from './components/CompanionPanel';
+import { RecruitmentModal } from './components/RecruitmentModal';
 import { getOrCreatePlayerProfile, awardXP, updateEncounterStats, savePlayerProfile } from './lib/levelingService';
 import { getDifficultyById, type DifficultyId } from './types/difficulty';
 import { Swords, Sparkles, Dices } from 'lucide-react';
@@ -78,6 +80,14 @@ function App() {
   const [showPerkModal, setShowPerkModal] = useState(false);
   const [showCharacterSheet, setShowCharacterSheet] = useState(false);
   const [showDifficultySelector, setShowDifficultySelector] = useState(false);
+
+  // Recruitment System State
+  const [recruitmentOffer, setRecruitmentOffer] = useState<LoreCard | null>(null);
+  const [showRecruitmentModal, setShowRecruitmentModal] = useState(false);
+
+  // Companion Dialogue State
+  const [companionDialogue, setCompanionDialogue] = useState<string | null>(null);
+  const [loyaltyNotifications, setLoyaltyNotifications] = useState<Array<{ id: string; name: string; change: number; newTier?: string }>>([]);
 
   // Playground Mode State
   const [playgroundPhase, setPlaygroundPhase] = useState<'setup' | 'playing' | 'complete'>('setup');
@@ -209,6 +219,14 @@ function App() {
         // Already have max cards selected
         return prev;
       }
+
+      // Show dialogue if it's a Character card
+      if (card.type === 'Character' && card.dialogue?.onPlay) {
+        const randomDialogue = card.dialogue.onPlay[Math.floor(Math.random() * card.dialogue.onPlay.length)];
+        setCompanionDialogue(`${card.name}: "${randomDialogue}"`);
+        setTimeout(() => setCompanionDialogue(null), 4000);
+      }
+
       // Add to selection
       return [...prev, card];
     });
@@ -248,9 +266,9 @@ function App() {
       ]);
 
       const actions: ActionPath[] = [
-        { path: 'might', narrative: `💀 ${failureNarratives[0]} (But it goes badly...)`, unlocked: false },
-        { path: 'fortune', narrative: `💀 ${failureNarratives[1]} (But it goes badly...)`, unlocked: false },
-        { path: 'cunning', narrative: `💀 ${failureNarratives[2]} (But it goes badly...)`, unlocked: false },
+        { path: 'might', narrative: failureNarratives[0], unlocked: true, isTotalFailure: true },
+        { path: 'fortune', narrative: failureNarratives[1], unlocked: true, isTotalFailure: true },
+        { path: 'cunning', narrative: failureNarratives[2], unlocked: true, isTotalFailure: true },
       ];
 
       setNarrativeDice(prev => Math.max(0, prev - 3)); // Used 3 dice for failure scenarios
@@ -260,17 +278,12 @@ function App() {
       return;
     }
 
-    // NORMAL: At least one path unlocked
+    // NORMAL: Generate AI narratives for ALL paths (not just unlocked ones)
+    // The narrative itself will convey the consequence
     const [mightNarrative, fortuneNarrative, cunningNarrative] = await Promise.all([
-      mightUnlocked
-        ? generateActionNarrativeAsync(selectedCards, 'might', currentChallenge.scene, introScene)
-        : Promise.resolve(`🔒 Locked: Requires ${might_req} Might (you have ${total.might})`),
-      fortuneUnlocked
-        ? generateActionNarrativeAsync(selectedCards, 'fortune', currentChallenge.scene, introScene)
-        : Promise.resolve(`🔒 Locked: Requires ${fortune_req} Fortune (you have ${total.fortune})`),
-      cunningUnlocked
-        ? generateActionNarrativeAsync(selectedCards, 'cunning', currentChallenge.scene, introScene)
-        : Promise.resolve(`🔒 Locked: Requires ${cunning_req} Cunning (you have ${total.cunning})`),
+      generateActionNarrativeAsync(selectedCards, 'might', currentChallenge.scene, introScene),
+      generateActionNarrativeAsync(selectedCards, 'fortune', currentChallenge.scene, introScene),
+      generateActionNarrativeAsync(selectedCards, 'cunning', currentChallenge.scene, introScene),
     ]);
 
     const actions: ActionPath[] = [
@@ -279,11 +292,9 @@ function App() {
       { path: 'cunning', narrative: cunningNarrative, unlocked: cunningUnlocked },
     ];
 
-    // Deduct narrative dice ONLY for unlocked paths that generated AI content
-    if (unlockedCount > 0) {
-      setNarrativeDice(prev => Math.max(0, prev - unlockedCount));
-      console.log(`🎲 Used ${unlockedCount} narrative dice for unlocked paths`);
-    }
+    // Deduct narrative dice for all 3 generated narratives
+    setNarrativeDice(prev => Math.max(0, prev - 3));
+    console.log('🎲 Used 3 narrative dice for all action paths');
 
     setAvailableActions(actions);
     setIsGeneratingNarrative(false);
@@ -306,9 +317,11 @@ function App() {
     let success: boolean;
     let gloryGained: number;
     let narrativeDiceGained: number;
+    let consequence: import('./types/game').EncounterConsequence | undefined;
 
     // Check if chosen path is the key stat
     const isKeyStat = currentChallenge.keyStat === chosenPath;
+    const wasKeyStat = isKeyStat;
 
     // Get difficulty multiplier for rewards
     const { getDifficultyById } = await import('./types/difficulty');
@@ -318,9 +331,19 @@ function App() {
     if (totalFailure) {
       // TOTAL FAILURE: All paths locked - choose your doom
       success = false;
-      gloryGained = Math.floor(-50 * difficultyMultiplier); // Bigger penalty scales with difficulty
+      gloryGained = Math.floor(-50 * difficultyMultiplier);
       narrativeDiceGained = 0;
       console.log(`💀💀💀 TOTAL FAILURE - Choose lesser of evils. Lose glory: ${gloryGained}`);
+
+      consequence = {
+        type: 'failure',
+        effects: {
+          nextEncounterModifier: 5,
+          injuryDebuff: { might: -2, fortune: -2, cunning: -2 },
+          companionLoyaltyHit: true
+        },
+        message: "Complete failure! Your companions lose faith, and you're injured."
+      };
     } else if (isUnlocked) {
       // Path was unlocked - guaranteed success!
       success = true;
@@ -332,12 +355,27 @@ function App() {
         gloryGained = Math.floor(baseGlory * difficultyMultiplier);
         narrativeDiceGained = 2;
         console.log(`✨🔑 KEY STAT used! Full glory: +${gloryGained} (${difficulty.name})`);
+
+        consequence = {
+          type: 'perfect',
+          effects: {},
+          message: "Perfect execution! Your companions are impressed."
+        };
       } else {
         // Using non-key stat = reduced rewards (60% of normal)
         const baseGlory = chosenPath === 'might' ? 50 : chosenPath === 'fortune' ? 40 : 60;
         gloryGained = Math.floor(baseGlory * 0.6 * difficultyMultiplier);
         narrativeDiceGained = 1;
         console.log(`⚠️ Non-key stat used. Reduced glory: +${gloryGained} (key was ${currentChallenge.keyStat})`);
+
+        consequence = {
+          type: 'partial',
+          effects: {
+            nextEncounterModifier: 3,
+            companionLoyaltyHit: true
+          },
+          message: `You succeeded, but ignored the key stat (${currentChallenge.keyStat}). Next encounter will be harder.`
+        };
       }
     } else {
       // Risky! Path was locked but others were unlocked - 50% chance of success
@@ -349,11 +387,30 @@ function App() {
         gloryGained = Math.floor(baseGlory * difficultyMultiplier);
         narrativeDiceGained = 1;
         console.log(`🎲 Locked path - DM mercy! Success with reduced glory: +${gloryGained}`);
+
+        consequence = {
+          type: 'partial',
+          effects: {
+            nextEncounterModifier: 2,
+            companionLoyaltyHit: false
+          },
+          message: "You took a risk and it paid off, but barely."
+        };
       } else {
         // Failed the risky choice - lose glory!
         gloryGained = Math.floor(-30 * difficultyMultiplier);
         narrativeDiceGained = 0;
         console.log(`💀 Locked path - FAILED! Lose glory: ${gloryGained}`);
+
+        consequence = {
+          type: 'failure',
+          effects: {
+            nextEncounterModifier: 4,
+            injuryDebuff: { might: -1, fortune: -1, cunning: -1 },
+            companionLoyaltyHit: true
+          },
+          message: "Your reckless choice backfired. You're injured and companions are disappointed."
+        };
       }
     }
 
@@ -375,10 +432,116 @@ function App() {
       scene,
       gloryGained,
       narrativeDice: narrativeDiceGained,
+      wasKeyStat,
+      consequences: consequence,
     });
 
     setGlory(prev => Math.max(0, prev + gloryGained)); // Can't go below 0
     setNarrativeDice(prev => prev + narrativeDiceGained);
+
+    // Update companion loyalty and show dialogue for Character cards
+    const { CompanionManager } = await import('./lib/companionManager');
+    const companionDialogues: string[] = [];
+    const loyaltyChanges: Array<{ id: string; name: string; change: number; newTier?: string }> = [];
+
+    selectedCards
+      .filter(card => card.type === 'Character')
+      .forEach(card => {
+        const oldLoyalty = card.loyalty || 0;
+        const oldTier = CompanionManager.getLoyaltyTier(oldLoyalty);
+
+        const loyaltyChange = CompanionManager.recordCardPlay(
+          card.id,
+          success,
+          chosenPath,
+          currentChallenge.keyStat,
+          wasKeyStat
+        );
+
+        const newLoyalty = oldLoyalty + loyaltyChange;
+        const newTier = CompanionManager.getLoyaltyTier(newLoyalty);
+
+        console.log(`🤝 ${card.name} loyalty ${loyaltyChange > 0 ? '+' : ''}${loyaltyChange} (Total: ${newLoyalty})`);
+
+        // Track loyalty change notification
+        loyaltyChanges.push({
+          id: card.id,
+          name: card.name,
+          change: loyaltyChange,
+          newTier: oldTier !== newTier ? newTier : undefined
+        });
+
+        // Pick appropriate dialogue
+        let dialoguePool: string[] = [];
+        if (card.dialogue) {
+          if (success && wasKeyStat && card.dialogue.onKeyStat) {
+            dialoguePool = card.dialogue.onKeyStat;
+          } else if (success && !wasKeyStat && card.dialogue.onNonKeyStat) {
+            dialoguePool = card.dialogue.onNonKeyStat;
+          } else if (success && card.dialogue.onWin) {
+            dialoguePool = card.dialogue.onWin;
+          } else if (!success && card.dialogue.onLose) {
+            dialoguePool = card.dialogue.onLose;
+          }
+        }
+
+        if (dialoguePool.length > 0) {
+          const randomDialogue = dialoguePool[Math.floor(Math.random() * dialoguePool.length)];
+          companionDialogues.push(`${card.name}: "${randomDialogue}"`);
+        }
+      });
+
+    // Show companion dialogue after resolution
+    if (companionDialogues.length > 0) {
+      setTimeout(() => {
+        setCompanionDialogue(companionDialogues.join('\n\n'));
+        setTimeout(() => setCompanionDialogue(null), 5000);
+      }, 1500);
+    }
+
+    // Show loyalty change notifications
+    if (loyaltyChanges.length > 0) {
+      setTimeout(() => {
+        setLoyaltyNotifications(loyaltyChanges);
+        setTimeout(() => setLoyaltyNotifications([]), 4000);
+      }, 2500);
+    }
+
+    // Apply consequences to player profile
+    if (consequence) {
+      // Track partial success streak and threat level
+      if (consequence.type === 'partial') {
+        playerProfile.partialSuccessStreak = (playerProfile.partialSuccessStreak || 0) + 1;
+
+        if (playerProfile.partialSuccessStreak >= 3) {
+          playerProfile.threatLevel = Math.min(10, (playerProfile.threatLevel || 0) + 2);
+          console.log(`⚠️ Threat rising! ${playerProfile.partialSuccessStreak} partial successes. Threat level: ${playerProfile.threatLevel}`);
+        }
+      } else if (consequence.type === 'perfect') {
+        playerProfile.partialSuccessStreak = 0;
+        playerProfile.threatLevel = Math.max(0, (playerProfile.threatLevel || 0) - 1);
+      }
+
+      // Add injuries
+      if (consequence.effects.injuryDebuff) {
+        const injury: import('./types/player').Injury = {
+          id: `injury_${Date.now()}`,
+          name: consequence.type === 'failure' ? 'Battle Wounds' : 'Minor Injury',
+          description: 'Still recovering from your last encounter',
+          statDebuff: consequence.effects.injuryDebuff,
+          encountersRemaining: 2,
+        };
+
+        playerProfile.activeInjuries = playerProfile.activeInjuries || [];
+        playerProfile.activeInjuries.push(injury);
+        console.log(`🤕 Injury sustained: ${injury.name}`);
+      }
+
+      // Set pending encounter modifier
+      if (consequence.effects.nextEncounterModifier) {
+        playerProfile.pendingEncounterModifier = consequence.effects.nextEncounterModifier;
+      }
+    }
 
     // Award XP and update player stats
     updateEncounterStats(playerProfile, success, chosenPath, gloryGained, selectedCards.length);
@@ -392,6 +555,22 @@ function App() {
         setLevelUpResult(levelUp);
         setShowLevelUpModal(true);
       }
+    } else {
+      savePlayerProfile(playerProfile);
+      setPlayerProfile({ ...playerProfile });
+    }
+
+    // Offer companion recruitment on perfect victories (key stat used)
+    if (success && wasKeyStat && currentChallenge) {
+      const { CompanionManager } = await import('./lib/companionManager');
+      const newCompanion = CompanionManager.createCompanionFromEncounter(
+        currentChallenge,
+        chosenPath,
+        playerProfile.level
+      );
+
+      setRecruitmentOffer(newCompanion);
+      setShowRecruitmentModal(true);
     }
 
     setIsGeneratingNarrative(false);
@@ -403,6 +582,26 @@ function App() {
 
     setIsGeneratingNarrative(true);
     setSelectedCards([]);
+
+    // Decrement injury durations and remove expired injuries
+    if (playerProfile.activeInjuries && playerProfile.activeInjuries.length > 0) {
+      playerProfile.activeInjuries = playerProfile.activeInjuries
+        .map(injury => ({
+          ...injury,
+          encountersRemaining: injury.encountersRemaining - 1
+        }))
+        .filter(injury => injury.encountersRemaining > 0);
+
+      console.log(`🩹 Injuries updated. ${playerProfile.activeInjuries.length} active injuries remaining.`);
+    }
+
+    // Clear pending encounter modifier (was applied to this challenge generation)
+    if (playerProfile.pendingEncounterModifier) {
+      console.log(`✅ Cleared pending encounter modifier: +${playerProfile.pendingEncounterModifier}`);
+      playerProfile.pendingEncounterModifier = 0;
+    }
+
+    savePlayerProfile(playerProfile);
 
     // Draw new hand based on player's hand size (excludes previously used cards for variety)
     const usedCardIds = hand.map(c => c.id);
@@ -439,6 +638,31 @@ function App() {
 
   const handleContinueFromTransition = () => {
     setPhase('challenge');
+  };
+
+  const handleRecruitCompanion = async (companion: LoreCard) => {
+    // Add to player's collected companions
+    playerProfile.collectedCompanions = playerProfile.collectedCompanions || [];
+    playerProfile.collectedCompanions.push(companion.id);
+
+    // Add to active deck
+    await DeckManager.addCardToActiveDeck(companion);
+
+    // Initialize companion loyalty
+    const { CompanionManager } = await import('./lib/companionManager');
+    CompanionManager.recordCardPlay(companion.id, true, companion.preferredPath!, companion.preferredPath, true);
+
+    savePlayerProfile(playerProfile);
+    setShowRecruitmentModal(false);
+    setRecruitmentOffer(null);
+
+    console.log(`🎉 Recruited ${companion.name} to the deck!`);
+  };
+
+  const handleDeclineRecruitment = () => {
+    setShowRecruitmentModal(false);
+    setRecruitmentOffer(null);
+    console.log('Declined companion recruitment');
   };
 
   const handleEndSession = () => {
@@ -1133,6 +1357,14 @@ function App() {
                 </CardContent>
               </Card>
 
+              {/* Companion Panel */}
+              {selectedCards.filter(c => c.type === 'Character').length > 0 && (
+                <CompanionPanel
+                  companions={selectedCards.filter(c => c.type === 'Character')}
+                  currentKeyStat={currentChallenge.keyStat}
+                />
+              )}
+
               <CardPlayArea
                 selectedCards={selectedCards}
                 maxCards={playerProfile.playAreaSize}
@@ -1235,7 +1467,7 @@ function App() {
                             <Button
                               onClick={() => handleActionChoice(action.path)}
                               className="w-full h-auto p-4 text-left justify-start whitespace-normal"
-                              variant={action.unlocked ? 'default' : 'destructive'}
+                              variant={action.isTotalFailure ? 'destructive' : 'default'}
                               size="lg"
                             >
                               <div className="space-y-1 w-full">
@@ -1243,22 +1475,10 @@ function App() {
                                   <span className="font-bold capitalize text-base">
                                     {action.path}
                                   </span>
-                                  {action.unlocked ? (
-                                    <span className="text-xs text-green-500 whitespace-nowrap">✓ Safe Choice</span>
-                                  ) : (
-                                    <span className="text-xs whitespace-nowrap">⚠️ Risky!</span>
-                                  )}
                                 </div>
                                 <p className={`text-sm whitespace-normal`}>
                                   {action.narrative}
                                 </p>
-                                {!action.unlocked && (
-                                  <p className="text-xs mt-2 opacity-90">
-                                    {availableActions.every(a => !a.unlocked)
-                                      ? '💀 Guaranteed failure: Lose 50 glory'
-                                      : '⚠️ 50% chance: Win half glory OR lose 30 glory'}
-                                  </p>
-                                )}
                               </div>
                             </Button>
                           </motion.div>
@@ -1300,10 +1520,11 @@ function App() {
                   <ActionSheetButton
                     key={action.path}
                     onClick={() => handleActionChoice(action.path)}
-                    locked={!action.unlocked}
-                    title={action.unlocked ? action.path.toUpperCase() : `${action.path.toUpperCase()} ⚠️ RISKY`}
-                    description={action.unlocked ? action.narrative : `${action.narrative}\n\n⚠️ 50% chance: Win half glory OR lose 30 glory`}
+                    locked={false}
+                    title={action.path.toUpperCase()}
+                    description={action.narrative}
                     icon={icons[action.path as keyof typeof icons]}
+                    variant={action.isTotalFailure ? 'destructive' : 'default'}
                   />
                 );
               })}
@@ -1344,6 +1565,57 @@ function App() {
 
                       {/* Play Narration Button */}
                       <SceneNarrationButton text={lastResult.scene} className="w-full" />
+
+                      {/* Consequence Display */}
+                      {lastResult.consequences && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.5 }}
+                        >
+                          <Card className={`${
+                            lastResult.consequences.type === 'perfect' ? 'border-green-500 bg-green-500/10' :
+                            lastResult.consequences.type === 'partial' ? 'border-yellow-500 bg-yellow-500/10' :
+                            'border-red-500 bg-red-500/10'
+                          }`}>
+                            <CardContent className="p-4 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">
+                                  {lastResult.consequences.type === 'perfect' ? '✨' :
+                                   lastResult.consequences.type === 'partial' ? '⚠️' : '💀'}
+                                </span>
+                                <p className="text-sm font-semibold">
+                                  {lastResult.consequences.type === 'perfect' ? 'Perfect Victory!' :
+                                   lastResult.consequences.type === 'partial' ? 'Partial Success' : 'Failure'}
+                                </p>
+                              </div>
+                              <p className="text-sm text-muted-foreground">{lastResult.consequences.message}</p>
+                              {lastResult.consequences.effects && (
+                                <div className="text-xs space-y-1 mt-2 pt-2 border-t border-border/50">
+                                  {lastResult.consequences.effects.nextEncounterModifier && (
+                                    <div className="flex items-center gap-2">
+                                      <span>⚔️</span>
+                                      <span>Next encounter +{lastResult.consequences.effects.nextEncounterModifier} difficulty</span>
+                                    </div>
+                                  )}
+                                  {lastResult.consequences.effects.injuryDebuff && (
+                                    <div className="flex items-center gap-2">
+                                      <span>🤕</span>
+                                      <span>Injury sustained (2 encounters)</span>
+                                    </div>
+                                  )}
+                                  {lastResult.consequences.effects.companionLoyaltyHit && (
+                                    <div className="flex items-center gap-2">
+                                      <span>💔</span>
+                                      <span>Companions are disappointed</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      )}
                     </>
                   )}
                   <div className="grid grid-cols-2 gap-4 p-4 bg-secondary rounded-lg">
@@ -1454,6 +1726,14 @@ function App() {
           onPerkApplied={(updatedProfile) => setPlayerProfile({ ...updatedProfile })}
         />
 
+        {/* Recruitment Modal */}
+        <RecruitmentModal
+          isOpen={showRecruitmentModal}
+          companion={recruitmentOffer}
+          onRecruit={handleRecruitCompanion}
+          onDecline={handleDeclineRecruitment}
+        />
+
         {/* Character Sheet Modal */}
         <AnimatePresence>
           {showCharacterSheet && (
@@ -1520,6 +1800,62 @@ function App() {
           isOpen={showNarratorManager}
           onClose={() => setShowNarratorManager(false)}
         />
+
+        {/* Companion Dialogue Toast */}
+        <AnimatePresence>
+          {companionDialogue && (
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-[90%] max-w-md"
+            >
+              <Card className="border-primary bg-gradient-to-br from-primary/20 to-background backdrop-blur-sm shadow-2xl">
+                <CardContent className="p-4">
+                  <p className="text-sm font-medium whitespace-pre-line text-center">{companionDialogue}</p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Loyalty Change Notifications */}
+        <AnimatePresence>
+          {loyaltyNotifications.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, x: 100 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 100 }}
+              className="fixed top-24 right-4 z-40 space-y-2 max-w-xs"
+            >
+              {loyaltyNotifications.map((notification, index) => (
+                <motion.div
+                  key={notification.id}
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 50 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <Card className={`${notification.change > 0 ? 'border-green-500 bg-green-500/10' : 'border-red-500 bg-red-500/10'} backdrop-blur-sm shadow-lg`}>
+                    <CardContent className="p-3 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-sm">{notification.name}</span>
+                        <span className={`text-sm font-bold ${notification.change > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {notification.change > 0 ? '+' : ''}{notification.change}
+                        </span>
+                      </div>
+                      {notification.newTier && (
+                        <div className="text-xs text-yellow-400 font-medium">
+                          ⭐ Tier Up: {notification.newTier}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
         </div>
       </main>
 

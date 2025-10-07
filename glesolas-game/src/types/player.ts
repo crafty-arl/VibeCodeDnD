@@ -1,5 +1,7 @@
 // Player progression and leveling system
 
+import type { CardStats } from './game';
+
 export interface PlayerProfile {
   id: string;
   name: string;
@@ -32,6 +34,23 @@ export interface PlayerProfile {
 
   // Play stats
   stats: PlayerStats;
+
+  // Consequence tracking
+  threatLevel?: number; // 0-10
+  partialSuccessStreak?: number;
+  activeInjuries?: Injury[];
+  pendingEncounterModifier?: number; // Modifier for next encounter
+
+  // Companion collection
+  collectedCompanions?: string[]; // Card IDs
+}
+
+export interface Injury {
+  id: string;
+  name: string;
+  description: string;
+  statDebuff: CardStats;
+  encountersRemaining: number;
 }
 
 export interface PlayerPerk {

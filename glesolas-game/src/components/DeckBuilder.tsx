@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Edit, Trash2, Check, X, Layers, Sparkles } from 'lucide-react';
 import type { LoreCard } from '../types/game';
@@ -24,6 +24,15 @@ export function DeckBuilder({ isOpen = true, onClose, onDeckSelected }: DeckBuil
   const [showDeckEditor, setShowDeckEditor] = useState(false);
   const [showAIGenerator, setShowAIGenerator] = useState(false);
 
+  // Refresh deck list when modal opens or when returning from editor/generator
+  useEffect(() => {
+    if (isOpen && !showDeckEditor && !showAIGenerator) {
+      const allDecks = DeckManager.getAllDecks();
+      console.log('📚 Refreshing deck list:', allDecks.length, 'decks', allDecks.map(d => d.name));
+      setDecks(allDecks);
+    }
+  }, [isOpen, showDeckEditor, showAIGenerator]);
+
   const handleCreateDeck = () => {
     setEditingDeck(null);
     setShowDeckEditor(true);
@@ -34,6 +43,7 @@ export function DeckBuilder({ isOpen = true, onClose, onDeckSelected }: DeckBuil
   };
 
   const handleEditDeck = (deck: Deck) => {
+    console.log('📝 Editing deck:', deck.name, 'Cards:', deck.cards.length, deck.cards);
     setEditingDeck(deck);
     setShowDeckEditor(true);
   };
@@ -178,7 +188,7 @@ export function DeckBuilder({ isOpen = true, onClose, onDeckSelected }: DeckBuil
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
             {decks.map((deck) => (
               <DeckCard
                 key={deck.id}
@@ -199,6 +209,10 @@ export function DeckBuilder({ isOpen = true, onClose, onDeckSelected }: DeckBuil
               />
             ))}
           </div>
+
+          <p className="text-xs text-muted-foreground text-center mt-2">
+            {decks.length} deck{decks.length !== 1 ? 's' : ''} available
+          </p>
 
           {decks.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
@@ -315,6 +329,14 @@ function DeckEditor({ deck, onSave, onCancel }: DeckEditorProps) {
   const [deckDescription, setDeckDescription] = useState(deck?.description || '');
   const [selectedCards, setSelectedCards] = useState<LoreCard[]>(deck?.cards || []);
 
+  // Update state when deck prop changes (e.g., switching between editing different decks)
+  useEffect(() => {
+    console.log('🔄 DeckEditor useEffect - deck changed:', deck?.name, 'Cards:', deck?.cards?.length);
+    setDeckName(deck?.name || '');
+    setDeckDescription(deck?.description || '');
+    setSelectedCards(deck?.cards || []);
+  }, [deck]);
+
   const handleCardToggle = (card: LoreCard) => {
     setSelectedCards((prev) => {
       const exists = prev.find((c) => c.id === card.id);
@@ -349,9 +371,47 @@ function DeckEditor({ deck, onSave, onCancel }: DeckEditorProps) {
     onSave(deckToSave);
   };
 
-  const characters = LORE_DECK.filter((card) => card.type === 'Character');
-  const items = LORE_DECK.filter((card) => card.type === 'Item');
-  const locations = LORE_DECK.filter((card) => card.type === 'Location');
+  // Check if this is an AI-generated deck (has cards not in LORE_DECK)
+  const isAIGeneratedDeck = deck ? deck.cards.some(deckCard =>
+    !LORE_DECK.find(loreCard => loreCard.id === deckCard.id)
+  ) : false;
+
+  // Build complete card pool: LORE_DECK + all custom cards from all decks
+  const buildCompleteCardPool = () => {
+    const allDecks = DeckManager.getAllDecks();
+    const allCustomCards: LoreCard[] = [];
+
+    // Collect all unique custom cards from all decks
+    allDecks.forEach(d => {
+      d.cards.forEach(card => {
+        // If card isn't in LORE_DECK and we haven't added it yet, add it
+        if (!LORE_DECK.find(lc => lc.id === card.id) && !allCustomCards.find(cc => cc.id === card.id)) {
+          allCustomCards.push(card);
+        }
+      });
+    });
+
+    return [...LORE_DECK, ...allCustomCards];
+  };
+
+  // Show card pool based on context:
+  // - Creating new deck (deck is null): show all available cards (LORE_DECK + custom cards from other decks)
+  // - Editing AI deck: show the deck's custom cards (view-only)
+  // - Editing standard deck: show all available cards for editing
+  const allAvailableCards = (isAIGeneratedDeck && deck) ? deck.cards : buildCompleteCardPool();
+
+  console.log('🎴 DeckEditor state:', {
+    isDeckNull: !deck,
+    isAIGeneratedDeck,
+    deckName: deck?.name,
+    allAvailableCardsCount: allAvailableCards.length,
+    LORE_DECK_count: LORE_DECK.length,
+    selectedCardsCount: selectedCards.length
+  });
+
+  const characters = allAvailableCards.filter((card) => card.type === 'Character');
+  const items = allAvailableCards.filter((card) => card.type === 'Item');
+  const locations = allAvailableCards.filter((card) => card.type === 'Location');
 
   return (
     <motion.div
@@ -388,9 +448,17 @@ function DeckEditor({ deck, onSave, onCancel }: DeckEditorProps) {
               Selected Cards ({selectedCards.length})
             </label>
 
+            {isAIGeneratedDeck && (
+              <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm">
+                <p className="text-blue-400">
+                  ℹ️ This is an AI-generated deck. Cards are shown for reference only and cannot be modified. You can edit the deck name and description.
+                </p>
+              </div>
+            )}
+
             <Tabs defaultValue="all" className="w-full">
               <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="all">All ({LORE_DECK.length})</TabsTrigger>
+                <TabsTrigger value="all">All ({allAvailableCards.length})</TabsTrigger>
                 <TabsTrigger value="characters">Characters ({characters.length})</TabsTrigger>
                 <TabsTrigger value="items">Items ({items.length})</TabsTrigger>
                 <TabsTrigger value="locations">Locations ({locations.length})</TabsTrigger>
@@ -398,9 +466,10 @@ function DeckEditor({ deck, onSave, onCancel }: DeckEditorProps) {
 
               <TabsContent value="all" className="mt-4">
                 <CardGrid
-                  cards={LORE_DECK}
+                  cards={allAvailableCards}
                   selectedCards={selectedCards}
-                  onCardToggle={handleCardToggle}
+                  onCardToggle={isAIGeneratedDeck ? () => {} : handleCardToggle}
+                  disabled={isAIGeneratedDeck}
                 />
               </TabsContent>
 
@@ -408,7 +477,8 @@ function DeckEditor({ deck, onSave, onCancel }: DeckEditorProps) {
                 <CardGrid
                   cards={characters}
                   selectedCards={selectedCards}
-                  onCardToggle={handleCardToggle}
+                  onCardToggle={isAIGeneratedDeck ? () => {} : handleCardToggle}
+                  disabled={isAIGeneratedDeck}
                 />
               </TabsContent>
 
@@ -416,7 +486,8 @@ function DeckEditor({ deck, onSave, onCancel }: DeckEditorProps) {
                 <CardGrid
                   cards={items}
                   selectedCards={selectedCards}
-                  onCardToggle={handleCardToggle}
+                  onCardToggle={isAIGeneratedDeck ? () => {} : handleCardToggle}
+                  disabled={isAIGeneratedDeck}
                 />
               </TabsContent>
 
@@ -424,7 +495,8 @@ function DeckEditor({ deck, onSave, onCancel }: DeckEditorProps) {
                 <CardGrid
                   cards={locations}
                   selectedCards={selectedCards}
-                  onCardToggle={handleCardToggle}
+                  onCardToggle={isAIGeneratedDeck ? () => {} : handleCardToggle}
+                  disabled={isAIGeneratedDeck}
                 />
               </TabsContent>
             </Tabs>
@@ -452,9 +524,10 @@ interface CardGridProps {
   cards: LoreCard[];
   selectedCards: LoreCard[];
   onCardToggle: (card: LoreCard) => void;
+  disabled?: boolean;
 }
 
-function CardGrid({ cards, selectedCards, onCardToggle }: CardGridProps) {
+function CardGrid({ cards, selectedCards, onCardToggle, disabled }: CardGridProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 max-h-[400px] overflow-y-auto p-1">
       {cards.map((card) => {
@@ -465,7 +538,8 @@ function CardGrid({ cards, selectedCards, onCardToggle }: CardGridProps) {
             <LoreCardComponent
               card={card}
               selected={!!isSelected}
-              onClick={() => onCardToggle(card)}
+              onClick={disabled ? undefined : () => onCardToggle(card)}
+              disabled={disabled}
             />
             {isSelected && (
               <div className="absolute top-2 right-2 bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center">

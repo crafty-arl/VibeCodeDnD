@@ -18,6 +18,21 @@ export interface LoreCard {
   rarity: 'Common' | 'Uncommon' | 'Rare' | 'Legendary';
   flavor: string;
   art?: string;
+
+  // Companion system (Character cards only)
+  loyalty?: number;
+  timesPlayed?: number;
+  encountersWon?: number;
+  encountersLost?: number;
+  preferredPath?: SkillPath;
+
+  dialogue?: {
+    onPlay: string[];
+    onWin: string[];
+    onLose: string[];
+    onKeyStat: string[];
+    onNonKeyStat: string[];
+  };
 }
 
 export interface SkillCheck {
@@ -37,6 +52,19 @@ export interface RollResult {
   scene: string;
   gloryGained: number;
   narrativeDice: number;
+  wasKeyStat?: boolean;
+  consequences?: EncounterConsequence;
+}
+
+export interface EncounterConsequence {
+  type: 'perfect' | 'partial' | 'failure';
+  effects: {
+    nextEncounterModifier?: number;
+    injuryDebuff?: CardStats;
+    companionLoyaltyHit?: boolean;
+    lostCards?: string[];
+  };
+  message: string;
 }
 
 export interface CampaignSession {
@@ -62,4 +90,5 @@ export interface ActionPath {
   path: SkillPath;
   narrative: string;
   unlocked: boolean;
+  isTotalFailure?: boolean; // True when all paths failed (choose your doom)
 }

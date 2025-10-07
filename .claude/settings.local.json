@@ -36,7 +36,8 @@
       "Bash(npx tsc:*)",
       "Read(//c/tmp/**)",
       "Bash(taskkill:*)",
-      "mcp__cloudflare-observability__search_cloudflare_documentation"
+      "mcp__cloudflare-observability__search_cloudflare_documentation",
+      "Bash(timeout 15 npx tsc --noEmit)"
     ],
     "deny": [],
     "ask": []

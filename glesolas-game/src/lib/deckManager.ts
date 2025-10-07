@@ -1,6 +1,7 @@
 import type { LoreCard } from '../types/game';
 import { LORE_DECK } from '../data/cards';
 import { VectorizeService } from './vectorizeService';
+import { CompanionManager } from './companionManager';
 
 export interface Deck {
   id: string;
@@ -144,6 +145,30 @@ export class DeckManager {
     const activeDeck = this.getActiveDeck();
     const availableCards = activeDeck.cards.filter(card => !exclude.includes(card.id));
     const shuffled = [...availableCards].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, count);
+    const drawnCards = shuffled.slice(0, count);
+
+    // Enrich Character cards with companion data
+    return drawnCards.map(card =>
+      card.type === 'Character' ? CompanionManager.enrichCard(card) : card
+    );
+  }
+
+  static async addCardToActiveDeck(card: LoreCard): Promise<void> {
+    const activeDeckId = this.getActiveDeckId();
+    const activeDeck = this.getActiveDeck();
+
+    // Check if card already exists in deck
+    const cardExists = activeDeck.cards.some(c => c.id === card.id);
+    if (cardExists) {
+      console.warn('Card already exists in deck:', card.id);
+      return;
+    }
+
+    // Add card to deck
+    const updatedCards = [...activeDeck.cards, card];
+
+    await this.updateDeck(activeDeckId, { cards: updatedCards });
+
+    console.log(`✅ Added ${card.name} to active deck`);
   }
 }

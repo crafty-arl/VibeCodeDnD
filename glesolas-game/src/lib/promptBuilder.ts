@@ -231,7 +231,7 @@ export function buildTransitionPrompt(
 
 Stay 100% in character with this personality, tone, and style throughout your narration.
 
-Create a brief transition (1-2 sentences) describing what YOUR player experiences next, using "you" and "your".
+Create a brief transition (1-2 sentences, MAX 250 characters) describing what YOUR player experiences next, using "you" and "your".
 
 **What Just Happened to the Player:**
 - "${previousResolution}"
@@ -243,9 +243,11 @@ Create a brief transition (1-2 sentences) describing what YOUR player experience
 
 Tell the player what THEY experience as the story continues. Use second-person: "You move forward...", "Your next challenge...", "You find yourself...". Bridge the action for THEM.
 
+**CRITICAL: Keep transition under 250 characters. Be concise.**
+
 **IMPORTANT: Respond with ONLY valid JSON in this exact format:**
 {
-  "transition": "Your 1-2 sentence transition text here",
+  "transition": "Your 1-2 sentence transition text here (MAX 250 chars)",
   "momentum": "rising" or "steady" or "falling"
 }
 
