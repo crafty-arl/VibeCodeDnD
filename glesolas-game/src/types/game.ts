@@ -63,6 +63,7 @@ export interface EncounterConsequence {
     injuryDebuff?: CardStats;
     companionLoyaltyHit?: boolean;
     lostCards?: string[];
+    clearPendingModifier?: boolean;
   };
   message: string;
 }

@@ -192,7 +192,6 @@ export function buildChallengePrompt(
   transitionContext?: string
 ): string {
   const activeDM = NarratorManager.getActiveNarrator();
-  const cardStats = cards.map(c => `${c.name} (Might: ${c.stats.might}, Fortune: ${c.stats.fortune}, Cunning: ${c.stats.cunning})`).join(', ');
 
   return `You are the DM named "${activeDM.name}" running this GLESOLAS game.
 

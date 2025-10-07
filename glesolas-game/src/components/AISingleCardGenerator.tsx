@@ -6,7 +6,6 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { generateSingleCard, isAIAvailable } from '@/lib/aiService';
-import type { GeneratedCard } from '@/lib/schemas/narrativeSchemas';
 import type { LoreCard } from '@/types/game';
 
 interface AISingleCardGeneratorProps {
