@@ -27,8 +27,8 @@ export class CompanionManager {
   static recordCardPlay(
     cardId: string,
     won: boolean,
-    pathChosen: SkillPath,
-    keyStat: SkillPath | undefined,
+    _pathChosen: SkillPath,
+    _keyStat: SkillPath | undefined,
     wasKeyStat: boolean
   ): number {
     const data = this.getCompanionData();

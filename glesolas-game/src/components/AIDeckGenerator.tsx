@@ -63,7 +63,7 @@ export function AIDeckGenerator({ onSave, onCancel }: AIDeckGeneratorProps) {
           }
         }
 
-        const baseCard = {
+        const baseCard: LoreCard = {
           id: `ai-${Date.now()}-${index}`,
           name: card.name,
           type: cardType,
@@ -81,6 +81,7 @@ export function AIDeckGenerator({ onSave, onCancel }: AIDeckGeneratorProps) {
         if (cardType === 'Character' && preferredPath) {
           return {
             ...baseCard,
+            type: 'Character' as const,
             preferredPath,
             dialogue: {
               onPlay: [`Ready to assist!`, `Let's do this together.`],
