@@ -14,7 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card';
 import { SessionManager, type GameSession } from './lib/sessionManager';
 import { SessionManagerComponent, SaveSessionDialog } from './components/SessionManager';
 import { DeckSelector } from './components/DeckSelector';
-import { DeckBuilder } from './components/DeckBuilder';
 import { DeckManager } from './lib/deckManager';
 import { DeckManagementDrawer } from './components/DeckManagementDrawer';
 import { NarratorManager } from './lib/narratorManager';
@@ -70,7 +69,6 @@ function App() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [showDeckSelector, setShowDeckSelector] = useState(false);
-  const [showDeckBuilder, setShowDeckBuilder] = useState(false);
   const [showNarratorManager, setShowNarratorManager] = useState(false);
   const [showDeckDrawer, setShowDeckDrawer] = useState(false);
   const [detailModalCard, setDetailModalCard] = useState<LoreCard | null>(null);
@@ -979,7 +977,7 @@ function App() {
         {/* Game Phases */}
         <AnimatePresence mode="wait" initial={false}>
           {/* MAIN MENU */}
-          {gameMode === 'menu' && !showDeckBuilder && !showNarratorManager && (
+          {gameMode === 'menu' && !showNarratorManager && (
             <motion.div
               key="home"
               initial={{ opacity: 0, x: -100 }}
@@ -1128,23 +1126,6 @@ function App() {
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {/* Deck Management */}
-                      <motion.div
-                        whileHover={{ y: -2 }}
-                        className="cursor-pointer"
-                        onClick={() => setShowDeckBuilder(true)}
-                      >
-                        <div className="p-4 rounded-lg border border-border hover:border-primary/50 hover:bg-primary/5 transition-all space-y-2">
-                          <div className="flex items-center gap-2 justify-center">
-                            <Scroll className="w-5 h-5 text-primary" />
-                            <h4 className="font-semibold">Deck Manager</h4>
-                          </div>
-                          <p className="text-xs text-muted-foreground text-center">
-                            Active: <span className="font-semibold text-foreground">{DeckManager.getActiveDeck().name}</span>
-                          </p>
-                          <p className="text-xs text-primary text-center font-medium">Click to manage →</p>
-                        </div>
-                      </motion.div>
 
                       {/* DM/Narrator Manager */}
                       <motion.div
@@ -1808,11 +1789,6 @@ function App() {
           onClose={() => setShowDifficultySelector(false)}
         />
 
-        {/* Deck Builder Modal */}
-        <DeckBuilder
-          isOpen={showDeckBuilder}
-          onClose={() => setShowDeckBuilder(false)}
-        />
 
         {/* Narrator Manager Modal */}
         <NarratorManagerComponent
