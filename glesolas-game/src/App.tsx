@@ -308,8 +308,8 @@ function App() {
     const chosenAction = availableActions.find(a => a.path === chosenPath);
     const isUnlocked = chosenAction?.unlocked ?? false;
 
-    // Check if ALL paths were locked (total failure scenario)
-    const totalFailure = availableActions.every(a => !a.unlocked);
+    // Check if this is a total failure scenario (using the isTotalFailure flag)
+    const totalFailure = chosenAction?.isTotalFailure ?? false;
 
     setIsGeneratingNarrative(true);
 
